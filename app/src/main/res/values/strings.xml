@@ -1,0 +1,115 @@
+<!--
+  ~ Copyright 2016 Jason Petterson
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<resources>
+    <string name="app_name">Run Lines</string>
+    <string name="title_activity_read_script">Read Script</string>
+    <string name="action_settings">Settings</string>
+    <string name="default_script_name">My New Script</string>
+    <string name="default_actor_name">John Smith</string>
+    <string name="default_line">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi laoreet bibendum mi, non malesuada erat sollicitudin tincidunt.</string>
+    <string name="title_activity_edit_script">Edit Script</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="discard_unsaved_changes">Discard unsaved changes?</string>
+    <string name="title_dialog_edit_line">Edit line</string>
+    <string name="saved_changes">Changes saved!</string>
+    <string name="title_dialog_add_actor">Add Actor</string>
+    <string name="add">Add</string>
+    <string name="hint_actor_name">Enter actor name…</string>
+    <string name="title_dialog_pick_actor">Pick Actor</string>
+    <string name="title_dialog_add_line">Add line for</string>
+    <string name="hint_add_line">Enter line here…</string>
+    <string name="title_dialog_add_script">Add new script</string>
+    <string name="hint_add_script">New script name…</string>
+    <string name="title_dialog_edit_group">Toggle lines to read</string>
+    <string name="title_dialog_edit_script">Edit script</string>
+    <string name="title_dialog_change_actor">Change actor</string>
+    <string name="title_dialog_edit_options">Edit options</string>
+    <string name="save">Save</string>
+    <string name="hint_edit_line">Add line here…</string>
+    <string name="alert_no_actors">Add line requires at least one actor.</string>
+    <string name="title_dialog_delete_script">Are you sure you want to delete</string>
+    <string name="delete">Delete</string>
+    <string name="title_dialog_edit_script_name">Edit script name</string>
+    <string name="hint_edit_script_name">Add script name…</string>
+    <string name="button_add_lines">Add Lines</string>
+    <string name="read_script_empty_list_label">This script is so fresh out of the oven, it doesn\'t even have lines, yet!</string>
+    <string name="alert_no_lines">No lines to read</string>
+    <string name="alert_reading">Reading lines…</string>
+    <string name="alert_no_tts">Text to speech engine not initialized, do you have Text-to-speech data installed?</string>
+    <string name="main_script_empty_list_label">No scripts, add your first one now!</string>
+    <string name="button_add_script">Create New Script</string>
+    <string name="import_script">Import script</string>
+    <string name="alert_script_import_success">Script imported successfully!</string>
+    <string name="alert_script_export_success">Script successfully exported!</string>
+    <string name="alert_script_export_error">Error: script did not export</string>
+    <string name="alert_read_permission_granted">Read permission granted!  Import is now enabled</string>
+    <string name="alert_write_permission_granted">Write permission granted!  Export is now enabled</string>
+    <string name="alert_script_import_error">Error: invalid script file</string>
+    <string name="tts_settings">TTS Settings</string>
+    <string name="speech_rate">Speech rate: %s</string>
+    <string name="toggle_settings">Toggle lines</string>
+    <string name="edit_settings">Edit script</string>
+    <string-array name="edit_line_options">
+        <item>Change actor</item>
+        <item>Change voice</item>
+        <item>Edit line</item>
+        <item>Remove line</item>
+        <item>Insert new line above</item>
+        <item>Insert new line below</item>
+        <item>Remove actor</item>
+    </string-array>
+    <string-array name="edit_script_options">
+        <item>Export script</item>
+        <item>Edit name</item>
+        <item>Delete</item>
+    </string-array>
+    <string-array name="edit_scene_options">
+        <item>Edit scene name</item>
+    </string-array>
+    <string name="title_activity_script_scene_list">Scenes</string>
+    <string name="button_add_scene">Add Scene</string>
+    <string name="script_scene_empty_list_label">No scenes here, yet.  Add one now!</string>
+    <string name="script_scene_list_title_prefix">Scenes for</string>
+    <string name="default_scene_name">New scene</string>
+    <string name="title_dialog_add_scene">Add new scene</string>
+    <string name="hint_add_scene">Add scene name here…</string>
+    <string name="action_actor_name">ACTIONS</string>
+    <string name="alert_attempt_remove_actor_warning">Can\'t remove actions actor.</string>
+    <string name="title_activity_read_script_prefix">Reading</string>
+    <string name="title_activity_edit_script_prefix">Editing</string>
+    <string name="title_dialog_edit_scene_name">Edit scene name</string>
+    <string name="toggle_actions">Show actions?</string>
+    <string name="title_dialog_importing">Importing script</string>
+    <string name="alert_script_import_error_unknown_ext">Error: \'%s\' is not supported at the moment.  Supported file extensions are: txt, pdf, fountain</string>
+    <string name="dismiss">Dismiss</string>
+    <string name="button_import_script">Import Script (txt, pdf, fountain)</string>
+    <string name="toggle_auto_pause">Pause after line read?</string>
+    <string name="title_dialog_auto_pause_actor_select">Pause after lines for…</string>
+    <string name="label_no_scene_name">Untitled scene</string>
+    <string name="label_no_script_name">Untitled script</string>
+    <string name="message_dialog_importing">This may take a while…</string>
+    <string name="alert_tts_not_ready">Text to speech not available</string>
+    <string name="title_dialog_tts_not_available">Text to speech not available</string>
+    <string name="message_dialog_tts_not_available">Sorry text to speech is not available on your device.</string>
+    <string name="alert_invalid_filename">Invalid filename</string>
+    <string name="alert_tts_not_available">Text to speech is not available on your device.</string>
+    <string name="export_script">Export script</string>
+    <string name="alert_write_permission_denied">Cannot export script without write permission!</string>
+    <string name="alert_read_permission_denied">Cannot import script without read permission!</string>
+    <string name="no_intent_handler">There are no applications available to handle this action.</string>
+</resources>
