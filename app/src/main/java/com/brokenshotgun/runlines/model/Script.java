@@ -28,6 +28,14 @@ import java.util.Map;
 public class Script implements Parcelable {
     private String name;
     private final List<Actor> actors;
+    /**
+     * Scheduled to be removed.
+     *
+     * Only remains as a way to upgrade people whole are upgrading from old version.
+     *
+     * @deprecated lines are now stored in Scenes.
+     */
+    @Deprecated
     private final List<Line> lines;
     private final List<Scene> scenes;
     private final List<String> allVoices;
@@ -65,6 +73,8 @@ public class Script implements Parcelable {
         this.lines.addAll(copy.lines);
         this.scenes.clear();
         this.scenes.addAll(copy.scenes);
+        this.allVoices.clear();
+        this.allVoices.addAll(copy.allVoices);
         this.actorVoices.clear();
         this.actorVoices.putAll(copy.actorVoices);
         this.id = copy.id;
@@ -74,6 +84,13 @@ public class Script implements Parcelable {
         actors.add(actor);
     }
 
+    /**
+     * Scheduled to be removed.
+     *
+     * Only remains as a way to upgrade people whole are upgrading from old version.
+     *
+     * @deprecated lines are now stored in Scenes.
+     */
     @Deprecated
     public void addLine(Line line) {
         lines.add(line);
@@ -134,6 +151,19 @@ public class Script implements Parcelable {
 
     public List<String> getAllVoices() {
         return allVoices;
+    }
+
+    @Override
+    public String toString() {
+        return "Script{" +
+                "name='" + name + '\'' +
+                ", actors=" + actors +
+                ", scenes=" + scenes +
+                ", allVoices=" + allVoices +
+                ", actorVoices=" + actorVoices +
+                ", defaultVoice='" + defaultVoice + '\'' +
+                ", id=" + id +
+                '}';
     }
 
     @Override
