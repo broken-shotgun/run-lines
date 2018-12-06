@@ -66,6 +66,15 @@ public class Scene implements Parcelable {
     }
 
     @Override
+    public String toString() {
+        return "Scene{" +
+                "name='" + name + '\'' +
+                ", number=" + number +
+                ", lines=" + lines +
+                '}';
+    }
+
+    @Override
     public int describeContents() {
         return 0;
     }

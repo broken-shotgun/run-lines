@@ -114,6 +114,13 @@ public class Line implements Parcelable {
     }
 
     @Override
+    public String toString() {
+        return "Line{" +
+                "line='" + line + '\'' +
+                '}';
+    }
+
+    @Override
     public int describeContents() {
         return 0;
     }
