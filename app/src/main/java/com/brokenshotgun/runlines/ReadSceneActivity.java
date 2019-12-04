@@ -26,10 +26,11 @@ import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.speech.tts.Voice;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
+import androidx.annotation.NonNull;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.Menu;
@@ -73,7 +74,7 @@ public class ReadSceneActivity extends AppCompatActivity {
     private String lastUtteranceId = "";
     private int lastReadLineIndex = -1;
     private LineArrayAdapter lineArrayAdapter;
-    private boolean[] isEnabled;
+    private final List<Boolean> isEnabled = new ArrayList<>();
     private boolean actionsEnabled;
     private boolean autoPauseEnabled;
     private String autoPauseActorName;
@@ -113,11 +114,8 @@ public class ReadSceneActivity extends AppCompatActivity {
         autoPauseEnabled = scriptPreferences.getBoolean("autoPauseEnabled", false);
         autoPauseActorName = scriptPreferences.getString("autoPauseActorName", null);
         Set<String> disabledActorSet = scriptPreferences.getStringSet("disabledActors", new HashSet<String>());
-        assert disabledActorSet != null;
-
-        isEnabled = new boolean[script.getActors().size()];
-        for (int i = 0; i < isEnabled.length; ++i) {
-            isEnabled[i] = !disabledActorSet.contains(script.getActors().get(i).getName());
+        if (disabledActorSet != null) {
+            refreshEnabledActors(disabledActorSet);
         }
 
         linesListView = findViewById(R.id.lines_list);
@@ -234,6 +232,7 @@ public class ReadSceneActivity extends AppCompatActivity {
                     public void run() {
                         Line currentLine = lineArrayAdapter.getItem(index);
                         if (autoPauseEnabled &&
+                                currentLine != null &&
                                 currentLine.getActor().getName().equalsIgnoreCase(autoPauseActorName) &&
                                 !autoPauseTriggered &&
                                 textToSpeech != null &&
@@ -270,6 +269,15 @@ public class ReadSceneActivity extends AppCompatActivity {
 
             @Override public void onError(String utteranceId) {}
         };
+    }
+
+    private void refreshEnabledActors(@NonNull Set<String> disabledActorSet) {
+        if (!script.getActors().isEmpty()) {
+            isEnabled.clear();
+            for (int i = 0; i < script.getActors().size(); ++i) {
+                isEnabled.add(!disabledActorSet.contains(script.getActors().get(i).getName()));
+            }
+        }
     }
 
     private void checkTtsData() {
@@ -386,10 +394,7 @@ public class ReadSceneActivity extends AppCompatActivity {
                 Set<String> disabledActorSet = scriptPreferences.getStringSet("disabledActors", new HashSet<String>());
                 assert disabledActorSet != null;
 
-                isEnabled = new boolean[script.getActors().size()];
-                for (int i = 0; i < isEnabled.length; ++i) {
-                    isEnabled[i] = !disabledActorSet.contains(script.getActors().get(i).getName());
-                }
+                refreshEnabledActors(disabledActorSet);
 
                 lineArrayAdapter.clear();
                 lineArrayAdapter.addAll(script.getScene(sceneIndex).getLines());
@@ -498,9 +503,12 @@ public class ReadSceneActivity extends AppCompatActivity {
             Line line = lineArrayAdapter.getItem(i);
             if (line != null) {
                 int actorIndex = script.getActors().indexOf(line.getActor());
-                line.enabled = isEnabled[actorIndex];
 
-                if (!isEnabled[actorIndex]) {
+                if (actorIndex >= 0 && actorIndex < isEnabled.size()) {
+                    line.enabled = isEnabled.get(actorIndex);
+                }
+
+                if (!line.enabled) {
                     disabledActorSet.add(line.getActor().getName());
                 }
             }
@@ -592,10 +600,16 @@ public class ReadSceneActivity extends AppCompatActivity {
             actorNames[i] = script.getActors().get(i).getName();
         }
 
-        builder.setMultiChoiceItems(actorNames, isEnabled, new DialogInterface.OnMultiChoiceClickListener() {
+        boolean[] isEnabledArray = new boolean[isEnabled.size()];
+        for(int i = 0; i < isEnabled.size(); ++i) {
+            isEnabledArray[i] = isEnabled.get(i);
+        }
+        builder.setMultiChoiceItems(actorNames, isEnabledArray, new DialogInterface.OnMultiChoiceClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which, boolean isChecked) {
-                isEnabled[which] = isChecked;
+                if (which >= 0 && which < isEnabled.size()) {
+                    isEnabled.set(which, isChecked);
+                }
                 refreshLines();
             }
         });
