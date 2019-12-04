@@ -114,9 +114,7 @@ public class ReadSceneActivity extends AppCompatActivity {
         autoPauseEnabled = scriptPreferences.getBoolean("autoPauseEnabled", false);
         autoPauseActorName = scriptPreferences.getString("autoPauseActorName", null);
         Set<String> disabledActorSet = scriptPreferences.getStringSet("disabledActors", new HashSet<String>());
-        if (disabledActorSet != null) {
-            refreshEnabledActors(disabledActorSet);
-        }
+        refreshEnabledActors(disabledActorSet);
 
         linesListView = findViewById(R.id.lines_list);
         assert linesListView != null;

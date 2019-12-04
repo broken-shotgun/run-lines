@@ -50,6 +50,7 @@ import com.brokenshotgun.runlines.utils.FileUtil;
 import com.brokenshotgun.runlines.utils.ScriptUtil;
 
 import java.io.File;
+import java.util.Objects;
 
 public class ScriptSceneListActivity extends AppCompatActivity {
     private Script script;
@@ -66,11 +67,10 @@ public class ScriptSceneListActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
         Bundle extras = getIntent().getExtras();
-        script = (Script) extras.get("script");
+        assert extras != null;
+        script = extras.getParcelable("script");
         dbHelper = new ScriptReaderDbHelper(this);
         dialogUtil = new DialogUtil();
-
-        upgradeScriptModel();
 
         setTitle(getString(R.string.script_scene_list_title_prefix) + " \"" + (script.getName().equals("") ? getString(R.string.label_no_script_name) : script.getName()) + "\"");
 
@@ -172,21 +172,6 @@ public class ScriptSceneListActivity extends AppCompatActivity {
                 MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
     }
 
-    /**
-     * Old script model did not have concept of scenes, so all lines were added directly to script.
-     * If lines exist there, add them to an new scene.
-     */
-    private void upgradeScriptModel() {
-        if (!script.getLines().isEmpty()) {
-            Scene newScene = new Scene("new scene");
-            newScene.getLines().addAll(script.getLines());
-            script.addScene(newScene);
-            script.getLines().clear();
-            dbHelper.updateScript(script);
-            Log.d(ScriptSceneListActivity.class.getName(), "Script model successfully upgraded!");
-        }
-    }
-
     private static final int OPEN_SCRIPT_REQUEST = 0;
 
     private void openScene(int sceneIndex) {
@@ -226,16 +211,22 @@ public class ScriptSceneListActivity extends AppCompatActivity {
 
         final EditText inputText = new EditText(this);
         inputText.setHint(R.string.hint_edit_line);
-        inputText.setText(sceneArrayAdapter.getItem(position).getName());
+        Scene scene = sceneArrayAdapter.getItem(position);
+        String sceneName = scene != null ? scene.getName() : "";
+        inputText.setText(sceneName);
         inputLayout.addView(inputText, params);
 
         builder.setView(inputLayout);
         builder.setPositiveButton(R.string.save, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                sceneArrayAdapter.getItem(position).setName(inputText.getText().toString().trim());
-                sceneArrayAdapter.notifyDataSetInvalidated();
-                dbHelper.updateScript(script);
+                Scene scene = sceneArrayAdapter.getItem(position);
+                if (scene != null) {
+                    scene.setName(inputText.getText().toString().trim());
+                    sceneArrayAdapter.notifyDataSetInvalidated();
+                    dbHelper.updateScript(script);
+                }
+
             }
         });
 
@@ -244,9 +235,10 @@ public class ScriptSceneListActivity extends AppCompatActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == OPEN_SCRIPT_REQUEST) {
             if (resultCode == RESULT_OK) {
-                script.copy((Script) data.getParcelableExtra("script"));
+                script.copy((Script) Objects.requireNonNull(data.getParcelableExtra("script")));
                 sceneArrayAdapter.notifyDataSetInvalidated();
             }
         }
@@ -254,17 +246,15 @@ public class ScriptSceneListActivity extends AppCompatActivity {
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
-        switch (requestCode) {
-            case MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE:
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Snackbar.make(sceneListView, R.string.alert_write_permission_granted, Snackbar.LENGTH_LONG).show();
-                    if (tmpExportScript != null) {
-                        exportScript(tmpExportScript);
-                    }
-                } else {
-                    Snackbar.make(sceneListView, R.string.alert_write_permission_denied, Snackbar.LENGTH_LONG).show();
+        if (requestCode == MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Snackbar.make(sceneListView, R.string.alert_write_permission_granted, Snackbar.LENGTH_LONG).show();
+                if (tmpExportScript != null) {
+                    exportScript(tmpExportScript);
                 }
-                break;
+            } else {
+                Snackbar.make(sceneListView, R.string.alert_write_permission_denied, Snackbar.LENGTH_LONG).show();
+            }
         }
     }
 

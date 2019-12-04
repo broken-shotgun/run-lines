@@ -24,11 +24,8 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
 import com.brokenshotgun.runlines.model.Script;
-import com.brokenshotgun.runlines.model.upgrade.ScriptV073;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -131,38 +128,13 @@ public class ScriptReaderDbHelper extends SQLiteOpenHelper {
             while (c.moveToNext()) {
                 long scriptId = c.getLong(0);
                 String scriptJson = c.getString(1);
-
-                Script script;
-                if (checkIfObfuscatedJson(scriptJson)) {
-                    Log.d(ScriptReaderDbHelper.class.getName(), "Upgrading obfuscated script...");
-                    script = deserializeV073(scriptJson);
-                    script.id = scriptId;
-                    updateScript(script);
-                }
-                else {
-                    script = deserialize(scriptJson);
-                    script.id = scriptId;
-                }
-
+                Script script = deserialize(scriptJson);
+                script.id = scriptId;
                 results.add(script);
             }
         }
 
         return results;
-    }
-
-    private boolean checkIfObfuscatedJson(String json) {
-        JsonObject check = gson.fromJson(json, JsonObject.class);
-        return check.has("a") &&
-                check.has("b") &&
-                check.has("c") &&
-                check.has("d") &&
-                check.has("e");
-    }
-
-    private Script deserializeV073(String json) {
-        ScriptV073 old = gson.fromJson(json, ScriptV073.class);
-        return old.convert();
     }
 
     public String serialize(Script script) {
@@ -187,7 +159,6 @@ public class ScriptReaderDbHelper extends SQLiteOpenHelper {
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         // TODO: handle this when the time comes to insure db version bump upgrades gracefully
-
         Log.d(ScriptReaderDbHelper.class.getName(), ">>> onUpgrade!");
         db.execSQL(SQL_DELETE_SCRIPT_TABLE);
         onCreate(db);
@@ -195,7 +166,6 @@ public class ScriptReaderDbHelper extends SQLiteOpenHelper {
 
     @Override
     public void onDowngrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        // FIXME: should show popup explaining that downgrading is not supported
         Log.d(ScriptReaderDbHelper.class.getName(), ">>> onDowngrade!");
         System.exit(-1);
     }

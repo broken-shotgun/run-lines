@@ -58,7 +58,9 @@ public class EditSceneActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
         Bundle extras = getIntent().getExtras();
-        script = new Script((Script) extras.get("script"));
+        assert extras != null;
+        extras.setClassLoader(Script.class.getClassLoader());
+        script = new Script((Script) extras.getParcelable("script"));
         int sceneIndex = (int) extras.get("sceneIndex");
 
         setTitle(getString(R.string.title_activity_edit_script_prefix) + " \"" + (script.getScene(sceneIndex).getName().equals("") ? getString(R.string.label_no_scene_name) : script.getScene(sceneIndex).getName()) + "\"");
