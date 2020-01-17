@@ -137,11 +137,11 @@ public class ScriptReaderDbHelper extends SQLiteOpenHelper {
         return results;
     }
 
-    public String serialize(Script script) {
+    private String serialize(Script script) {
         return gson.toJson(script);
     }
 
-    public Script deserialize(String json) {
+    private Script deserialize(String json) {
         try {
             Log.e(ScriptReaderDbHelper.class.getName(), "Deserialize attempt #1 failed");
             return gson.fromJson(json, Script.class);

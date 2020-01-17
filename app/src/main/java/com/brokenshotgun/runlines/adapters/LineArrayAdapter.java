@@ -26,6 +26,8 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+
 import com.brokenshotgun.runlines.R;
 import com.brokenshotgun.runlines.model.Actor;
 import com.brokenshotgun.runlines.model.Line;
@@ -38,8 +40,9 @@ public class LineArrayAdapter extends ArrayAdapter<Line> {
         super(context, R.layout.item_line, lines);
     }
 
+    @NonNull
     @Override
-    public View getView(int position, View convertView, ViewGroup parent) {
+    public View getView(int position, View convertView, @NonNull ViewGroup parent) {
         ViewHolder viewHolder;
 
         if (convertView == null) {
@@ -77,7 +80,9 @@ public class LineArrayAdapter extends ArrayAdapter<Line> {
         if (!enabled) {
             setItemBackground(result, getContext().getResources().getDrawable(R.drawable.hidden_line_background));
         } else if (position == selectedItem) {
-            result.setBackgroundColor(colorFromUsername(getItem(position).getActor().getName()));
+            Line line = getItem(position);
+            if (line != null)
+                result.setBackgroundColor(colorFromUsername(line.getActor().getName()));
         } else {
             setItemBackground(result, null);
         }

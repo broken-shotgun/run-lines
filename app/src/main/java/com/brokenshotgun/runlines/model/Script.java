@@ -23,7 +23,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class Script implements Parcelable {
     private String name;
@@ -160,8 +159,8 @@ public class Script implements Parcelable {
         scenes = (tmpScenes != null) ? new ArrayList<>(tmpScenes) : new ArrayList<Scene>();
         allVoices = new ArrayList<>();
         in.readStringList(allVoices);
-        Serializable tmpVoices = in.readSerializable();
-        this.actorVoices = (tmpVoices == null) ? new HashMap<String, String>() : (HashMap<String, String>) tmpVoices;
+        Serializable tmpActorVoices = in.readSerializable();
+        this.actorVoices = (tmpActorVoices == null) ? new HashMap<String, String>() : (HashMap<String, String>) tmpActorVoices;
         id = in.readLong();
 
         if (actors.size() == 0 || !actors.get(0).equals(Actor.ACTION)) {

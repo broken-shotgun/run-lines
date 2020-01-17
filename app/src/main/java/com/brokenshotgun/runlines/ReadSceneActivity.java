@@ -26,11 +26,6 @@ import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.speech.tts.Voice;
-import androidx.annotation.NonNull;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.snackbar.Snackbar;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.Menu;
@@ -43,12 +38,18 @@ import android.widget.ListView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+
 import com.brokenshotgun.runlines.adapters.LineArrayAdapter;
 import com.brokenshotgun.runlines.model.Actor;
 import com.brokenshotgun.runlines.model.Line;
 import com.brokenshotgun.runlines.model.Script;
 import com.brokenshotgun.runlines.utils.DialogUtil;
 import com.brokenshotgun.runlines.utils.Intents;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -390,8 +391,6 @@ public class ReadSceneActivity extends AppCompatActivity {
                 }
 
                 Set<String> disabledActorSet = scriptPreferences.getStringSet("disabledActors", new HashSet<String>());
-                assert disabledActorSet != null;
-
                 refreshEnabledActors(disabledActorSet);
 
                 lineArrayAdapter.clear();
@@ -446,6 +445,7 @@ public class ReadSceneActivity extends AppCompatActivity {
                 }
             }
         }
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
     public void onEditScriptButtonClicked(View view) {
