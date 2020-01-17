@@ -135,7 +135,6 @@ public class ReadSceneActivity extends AppCompatActivity {
         refreshLines();
 
         FloatingActionButton editGroupButton = findViewById(R.id.edit_group);
-        assert editGroupButton != null;
         editGroupButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -143,17 +142,7 @@ public class ReadSceneActivity extends AppCompatActivity {
             }
         });
 
-        FloatingActionButton editScriptButton = findViewById(R.id.edit_script);
-        assert editScriptButton != null;
-        editScriptButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                onEditScriptButtonClicked(view);
-            }
-        });
-
         playButton = findViewById(R.id.play);
-        assert playButton != null;
         playButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -331,7 +320,7 @@ public class ReadSceneActivity extends AppCompatActivity {
                 showToggleLinesDialog();
                 return true;
             case R.id.edit_settings:
-                onEditScriptButtonClicked(null);
+                onEditScriptButtonClicked();
                 return true;
             case R.id.toggle_actions:
                 actionsEnabled = !item.isChecked();
@@ -454,7 +443,7 @@ public class ReadSceneActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
     }
 
-    public void onEditScriptButtonClicked(View view) {
+    public void onEditScriptButtonClicked() {
         Intent editIntent = new Intent(this, EditSceneActivity.class);
         editIntent.putExtra("script", script);
         editIntent.putExtra("sceneIndex", sceneIndex);
