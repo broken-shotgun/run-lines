@@ -26,11 +26,6 @@ import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.speech.tts.Voice;
-import androidx.annotation.NonNull;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.snackbar.Snackbar;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.Menu;
@@ -43,12 +38,18 @@ import android.widget.ListView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+
 import com.brokenshotgun.runlines.adapters.LineArrayAdapter;
 import com.brokenshotgun.runlines.model.Actor;
 import com.brokenshotgun.runlines.model.Line;
 import com.brokenshotgun.runlines.model.Script;
 import com.brokenshotgun.runlines.utils.DialogUtil;
 import com.brokenshotgun.runlines.utils.Intents;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -114,9 +115,7 @@ public class ReadSceneActivity extends AppCompatActivity {
         autoPauseEnabled = scriptPreferences.getBoolean("autoPauseEnabled", false);
         autoPauseActorName = scriptPreferences.getString("autoPauseActorName", null);
         Set<String> disabledActorSet = scriptPreferences.getStringSet("disabledActors", new HashSet<String>());
-        if (disabledActorSet != null) {
-            refreshEnabledActors(disabledActorSet);
-        }
+        refreshEnabledActors(disabledActorSet);
 
         linesListView = findViewById(R.id.lines_list);
         assert linesListView != null;
@@ -136,7 +135,6 @@ public class ReadSceneActivity extends AppCompatActivity {
         refreshLines();
 
         FloatingActionButton editGroupButton = findViewById(R.id.edit_group);
-        assert editGroupButton != null;
         editGroupButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -144,20 +142,16 @@ public class ReadSceneActivity extends AppCompatActivity {
             }
         });
 
-        FloatingActionButton editScriptButton = findViewById(R.id.edit_script);
-        assert editScriptButton != null;
-        editScriptButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                onEditScriptButtonClicked(view);
-            }
-        });
-
         playButton = findViewById(R.id.play);
-        assert playButton != null;
         playButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                if (sceneIndex < 0 || sceneIndex >= script.getScenes().size()) {
+                    Snackbar.make(view, R.string.alert_invalid_scene_index, Snackbar.LENGTH_LONG)
+                            .show();
+                    return;
+                }
+
                 if (script.getScene(sceneIndex).getLines().isEmpty()) {
                     Snackbar.make(view, R.string.alert_no_lines, Snackbar.LENGTH_LONG)
                             .show();
@@ -326,7 +320,7 @@ public class ReadSceneActivity extends AppCompatActivity {
                 showToggleLinesDialog();
                 return true;
             case R.id.edit_settings:
-                onEditScriptButtonClicked(null);
+                onEditScriptButtonClicked();
                 return true;
             case R.id.toggle_actions:
                 actionsEnabled = !item.isChecked();
@@ -392,8 +386,6 @@ public class ReadSceneActivity extends AppCompatActivity {
                 }
 
                 Set<String> disabledActorSet = scriptPreferences.getStringSet("disabledActors", new HashSet<String>());
-                assert disabledActorSet != null;
-
                 refreshEnabledActors(disabledActorSet);
 
                 lineArrayAdapter.clear();
@@ -448,9 +440,10 @@ public class ReadSceneActivity extends AppCompatActivity {
                 }
             }
         }
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
-    public void onEditScriptButtonClicked(View view) {
+    public void onEditScriptButtonClicked() {
         Intent editIntent = new Intent(this, EditSceneActivity.class);
         editIntent.putExtra("script", script);
         editIntent.putExtra("sceneIndex", sceneIndex);

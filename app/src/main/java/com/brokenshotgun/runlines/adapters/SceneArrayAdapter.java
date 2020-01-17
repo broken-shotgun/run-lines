@@ -23,6 +23,8 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+
 import com.brokenshotgun.runlines.R;
 import com.brokenshotgun.runlines.model.Scene;
 
@@ -36,8 +38,9 @@ public class SceneArrayAdapter extends ArrayAdapter<Scene> {
         this.context = context;
     }
 
+    @NonNull
     @Override
-    public View getView(int position, View convertView, ViewGroup parent) {
+    public View getView(int position, View convertView, @NonNull ViewGroup parent) {
         ViewHolder viewHolder;
 
         if (convertView == null) {

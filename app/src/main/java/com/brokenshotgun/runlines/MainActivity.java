@@ -29,13 +29,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.OpenableColumns;
-import androidx.annotation.NonNull;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.snackbar.Snackbar;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -48,6 +41,12 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
 import com.brokenshotgun.runlines.adapters.ScriptArrayAdapter;
 import com.brokenshotgun.runlines.data.FountainParser;
 import com.brokenshotgun.runlines.data.PdfParser;
@@ -57,10 +56,13 @@ import com.brokenshotgun.runlines.utils.DialogUtil;
 import com.brokenshotgun.runlines.utils.FileUtil;
 import com.brokenshotgun.runlines.utils.Intents;
 import com.brokenshotgun.runlines.utils.ScriptUtil;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
 import com.kobakei.ratethisapp.RateThisApp;
-
+import com.tom_roush.pdfbox.io.MemoryUsageSetting;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.text.PDFTextStripper;
+import com.tom_roush.pdfbox.util.PDFBoxResourceLoader;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -195,7 +197,7 @@ public class MainActivity extends AppCompatActivity {
         if (savedInstanceState == null) {
             Intent intent = getIntent();
             if (Intent.ACTION_VIEW.equals(intent.getAction())) {
-                Log.d(MainActivity.class.getName(), intent.getData().toString());
+                //Log.d(MainActivity.class.getName(), intent.getData().toString());
                 showImportProgressDialog();
                 importScriptFromText(intent.getData(), importScriptHandler);
                 intent.setData(null);
@@ -207,6 +209,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
 
+        PDFBoxResourceLoader.init(getApplicationContext());
         RateThisApp.onStart(this);
         RateThisApp.showRateDialogIfNeeded(this);
     }
@@ -295,9 +298,11 @@ public class MainActivity extends AppCompatActivity {
         builder.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                scriptListAdapter.getItem(position).setName(inputText.getText().toString().trim());
-                scriptListAdapter.notifyDataSetInvalidated();
-                dbHelper.updateScript(script);
+                if (scriptListAdapter.getItem(position) != null) {
+                    scriptListAdapter.getItem(position).setName(inputText.getText().toString().trim());
+                    scriptListAdapter.notifyDataSetInvalidated();
+                    dbHelper.updateScript(script);
+                }
             }
         });
 
@@ -437,7 +442,13 @@ public class MainActivity extends AppCompatActivity {
                 PDDocument document = null;
                 try {
                     InputStream fileStream = getContentResolver().openInputStream(filename);
-                    document = PDDocument.load(fileStream);
+                    if (fileStream == null) {
+                        Log.e(MainActivity.class.getName(), "Could not open file, InputStream is null");
+                        if (importCallback != null)
+                            importCallback.onFailure();
+                        return;
+                    }
+                    document = PDDocument.load(fileStream, MemoryUsageSetting.setupTempFileOnly());
                     PDFTextStripper textStripper = new PDFTextStripper();
                     textStripper.setAddMoreFormatting(true);
                     textStripper.setLineSeparator("\n");
@@ -495,6 +506,13 @@ public class MainActivity extends AppCompatActivity {
         if (requestCode == IMPORT_FILE_SELECT_REQUEST) {
             if (resultCode == RESULT_OK) {
                 Uri fileUri = data.getData();
+
+                if (fileUri == null) {
+                    Log.e(MainActivity.class.getName(), "File URI is null");
+                    Snackbar.make(scriptListView, R.string.alert_error_file_open, Snackbar.LENGTH_SHORT).show();
+                    return;
+                }
+
                 String filename;
                 String extension = "";
                 try (Cursor fileCursor = getContentResolver().query(fileUri, null, null, null, null)) {
@@ -575,7 +593,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         switch (requestCode) {
             case MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE:
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {

@@ -24,14 +24,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import androidx.annotation.NonNull;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.snackbar.Snackbar;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -41,6 +33,12 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
 import com.brokenshotgun.runlines.adapters.SceneArrayAdapter;
 import com.brokenshotgun.runlines.data.ScriptReaderDbHelper;
 import com.brokenshotgun.runlines.model.Scene;
@@ -48,8 +46,11 @@ import com.brokenshotgun.runlines.model.Script;
 import com.brokenshotgun.runlines.utils.DialogUtil;
 import com.brokenshotgun.runlines.utils.FileUtil;
 import com.brokenshotgun.runlines.utils.ScriptUtil;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
 
 import java.io.File;
+import java.util.Objects;
 
 public class ScriptSceneListActivity extends AppCompatActivity {
     private Script script;
@@ -66,16 +67,14 @@ public class ScriptSceneListActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
         Bundle extras = getIntent().getExtras();
-        script = (Script) extras.get("script");
+        assert extras != null;
+        script = extras.getParcelable("script");
         dbHelper = new ScriptReaderDbHelper(this);
         dialogUtil = new DialogUtil();
-
-        upgradeScriptModel();
 
         setTitle(getString(R.string.script_scene_list_title_prefix) + " \"" + (script.getName().equals("") ? getString(R.string.label_no_script_name) : script.getName()) + "\"");
 
         sceneListView = findViewById(R.id.scenes_list);
-        assert sceneListView != null;
         sceneArrayAdapter = new SceneArrayAdapter(this, script.getScenes());
         sceneListView.setAdapter(sceneArrayAdapter);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -132,13 +131,11 @@ public class ScriptSceneListActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.export_script:
-                exportScript(script);
-                return true;
-            default:
-                return super.onOptionsItemSelected(item);
+        if (item.getItemId() == R.id.export_script) {
+            exportScript(script);
+            return true;
         }
+        return super.onOptionsItemSelected(item);
     }
 
     private static final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 1;
@@ -172,21 +169,6 @@ public class ScriptSceneListActivity extends AppCompatActivity {
                 MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
     }
 
-    /**
-     * Old script model did not have concept of scenes, so all lines were added directly to script.
-     * If lines exist there, add them to an new scene.
-     */
-    private void upgradeScriptModel() {
-        if (!script.getLines().isEmpty()) {
-            Scene newScene = new Scene("new scene");
-            newScene.getLines().addAll(script.getLines());
-            script.addScene(newScene);
-            script.getLines().clear();
-            dbHelper.updateScript(script);
-            Log.d(ScriptSceneListActivity.class.getName(), "Script model successfully upgraded!");
-        }
-    }
-
     private static final int OPEN_SCRIPT_REQUEST = 0;
 
     private void openScene(int sceneIndex) {
@@ -203,10 +185,8 @@ public class ScriptSceneListActivity extends AppCompatActivity {
         builder.setTitle(R.string.title_dialog_edit_options)
                 .setItems(R.array.edit_scene_options, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
-                        switch (which) {
-                            case OPTION_EDIT_SCENE_NAME:
-                                showEditSceneNameDialog(position);
-                                break;
+                        if (which == OPTION_EDIT_SCENE_NAME) {
+                            showEditSceneNameDialog(position);
                         }
                     }
                 });
@@ -226,16 +206,22 @@ public class ScriptSceneListActivity extends AppCompatActivity {
 
         final EditText inputText = new EditText(this);
         inputText.setHint(R.string.hint_edit_line);
-        inputText.setText(sceneArrayAdapter.getItem(position).getName());
+        Scene scene = sceneArrayAdapter.getItem(position);
+        String sceneName = scene != null ? scene.getName() : "";
+        inputText.setText(sceneName);
         inputLayout.addView(inputText, params);
 
         builder.setView(inputLayout);
         builder.setPositiveButton(R.string.save, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                sceneArrayAdapter.getItem(position).setName(inputText.getText().toString().trim());
-                sceneArrayAdapter.notifyDataSetInvalidated();
-                dbHelper.updateScript(script);
+                Scene scene = sceneArrayAdapter.getItem(position);
+                if (scene != null) {
+                    scene.setName(inputText.getText().toString().trim());
+                    sceneArrayAdapter.notifyDataSetInvalidated();
+                    dbHelper.updateScript(script);
+                }
+
             }
         });
 
@@ -244,9 +230,10 @@ public class ScriptSceneListActivity extends AppCompatActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == OPEN_SCRIPT_REQUEST) {
             if (resultCode == RESULT_OK) {
-                script.copy((Script) data.getParcelableExtra("script"));
+                script.copy((Script) Objects.requireNonNull(data.getParcelableExtra("script")));
                 sceneArrayAdapter.notifyDataSetInvalidated();
             }
         }
@@ -254,17 +241,15 @@ public class ScriptSceneListActivity extends AppCompatActivity {
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
-        switch (requestCode) {
-            case MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE:
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Snackbar.make(sceneListView, R.string.alert_write_permission_granted, Snackbar.LENGTH_LONG).show();
-                    if (tmpExportScript != null) {
-                        exportScript(tmpExportScript);
-                    }
-                } else {
-                    Snackbar.make(sceneListView, R.string.alert_write_permission_denied, Snackbar.LENGTH_LONG).show();
+        if (requestCode == MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Snackbar.make(sceneListView, R.string.alert_write_permission_granted, Snackbar.LENGTH_LONG).show();
+                if (tmpExportScript != null) {
+                    exportScript(tmpExportScript);
                 }
-                break;
+            } else {
+                Snackbar.make(sceneListView, R.string.alert_write_permission_denied, Snackbar.LENGTH_LONG).show();
+            }
         }
     }
 

@@ -21,11 +21,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
-import androidx.coordinatorlayout.widget.CoordinatorLayout;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.snackbar.Snackbar;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -33,12 +28,18 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
+
 import com.brokenshotgun.runlines.adapters.LineArrayAdapter;
 import com.brokenshotgun.runlines.data.ScriptReaderDbHelper;
 import com.brokenshotgun.runlines.model.Actor;
 import com.brokenshotgun.runlines.model.Line;
 import com.brokenshotgun.runlines.model.Script;
 import com.brokenshotgun.runlines.utils.DialogUtil;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
 
 public class EditSceneActivity extends AppCompatActivity {
 
@@ -58,7 +59,14 @@ public class EditSceneActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
         Bundle extras = getIntent().getExtras();
-        script = new Script((Script) extras.get("script"));
+        assert extras != null;
+        extras.setClassLoader(Script.class.getClassLoader());
+        Script originalScript = extras.getParcelable("script");
+        if (originalScript == null) {
+            finish();
+            return;
+        }
+        script = new Script(originalScript);
         int sceneIndex = (int) extras.get("sceneIndex");
 
         setTitle(getString(R.string.title_activity_edit_script_prefix) + " \"" + (script.getScene(sceneIndex).getName().equals("") ? getString(R.string.label_no_scene_name) : script.getScene(sceneIndex).getName()) + "\"");
@@ -270,8 +278,9 @@ public class EditSceneActivity extends AppCompatActivity {
         Actor replacement = script.getActors().get(0);
 
         for (int i = 0; i < lineArrayAdapter.getCount(); ++i) {
-            if (lineArrayAdapter.getItem(i).getActor().equals(actor)) {
-                lineArrayAdapter.getItem(i).setActor(replacement);
+            Line line = lineArrayAdapter.getItem(i);
+            if (line != null && line.getActor().equals(actor)) {
+                line.setActor(replacement);
             }
         }
 
@@ -280,9 +289,10 @@ public class EditSceneActivity extends AppCompatActivity {
 
     private void updateOrder() {
         for (int i = 0; i < lineArrayAdapter.getCount(); ++i) {
-            lineArrayAdapter.getItem(i).order = i;
+            Line line = lineArrayAdapter.getItem(i);
+            if (line != null)
+                line.order = i;
         }
-
         lineArrayAdapter.notifyDataSetInvalidated();
     }
 
@@ -294,8 +304,11 @@ public class EditSceneActivity extends AppCompatActivity {
         builder.setAdapter(actorArrayAdapter, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                lineArrayAdapter.getItem(linePosition).setActor(actorArrayAdapter.getItem(which));
-                lineArrayAdapter.notifyDataSetInvalidated();
+                Line line = lineArrayAdapter.getItem(linePosition);
+                if (line != null) {
+                    line.setActor(actorArrayAdapter.getItem(which));
+                    lineArrayAdapter.notifyDataSetInvalidated();
+                }
             }
         });
 

@@ -19,24 +19,16 @@ package com.brokenshotgun.runlines.model;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import androidx.annotation.NonNull;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class Script implements Parcelable {
     private String name;
     private final List<Actor> actors;
-    /**
-     * Scheduled to be removed.
-     *
-     * Only remains as a way to upgrade people whole are upgrading from old version.
-     *
-     * @deprecated lines are now stored in Scenes.
-     */
-    @Deprecated
-    private final List<Line> lines;
     private final List<Scene> scenes;
     private final List<String> allVoices;
     private final HashMap<String, String> actorVoices;
@@ -47,7 +39,6 @@ public class Script implements Parcelable {
     public Script(String name) {
         this.name = name;
         actors = new ArrayList<>();
-        lines = new ArrayList<>();
         scenes = new ArrayList<>();
         allVoices = new ArrayList<>();
         actorVoices = new HashMap<>();
@@ -58,7 +49,6 @@ public class Script implements Parcelable {
     public Script(Script copy) {
         this.name = copy.name;
         this.actors = new ArrayList<>(copy.actors);
-        this.lines = new ArrayList<>(copy.lines);
         this.scenes = new ArrayList<>(copy.scenes);
         this.allVoices = new ArrayList<>(copy.allVoices);
         this.actorVoices = new HashMap<>(copy.actorVoices);
@@ -69,8 +59,6 @@ public class Script implements Parcelable {
         this.name = copy.name;
         this.actors.clear();
         this.actors.addAll(copy.actors);
-        this.lines.clear();
-        this.lines.addAll(copy.lines);
         this.scenes.clear();
         this.scenes.addAll(copy.scenes);
         this.allVoices.clear();
@@ -84,28 +72,12 @@ public class Script implements Parcelable {
         actors.add(actor);
     }
 
-    /**
-     * Scheduled to be removed.
-     *
-     * Only remains as a way to upgrade people whole are upgrading from old version.
-     *
-     * @deprecated lines are now stored in Scenes.
-     */
-    @Deprecated
-    public void addLine(Line line) {
-        lines.add(line);
-    }
-
     public String getName() {
         return name;
     }
 
     public List<Actor> getActors() {
         return actors;
-    }
-
-    public List<Line> getLines() {
-        return lines;
     }
 
     public List<Scene> getScenes() {
@@ -153,6 +125,7 @@ public class Script implements Parcelable {
         return allVoices;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "Script{" +
@@ -175,7 +148,6 @@ public class Script implements Parcelable {
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeString(this.name);
         dest.writeTypedList(this.actors);
-        dest.writeTypedList(this.lines);
         dest.writeTypedList(this.scenes);
         dest.writeStringList(this.allVoices);
         dest.writeSerializable(this.actorVoices);
@@ -186,14 +158,12 @@ public class Script implements Parcelable {
         name = in.readString();
         ArrayList<Actor> tmpActors = in.createTypedArrayList(Actor.CREATOR);
         actors = (tmpActors != null) ? new ArrayList<>(tmpActors) : new ArrayList<Actor>();
-        ArrayList<Line> tmpLines = in.createTypedArrayList(Line.CREATOR);
-        lines = (tmpLines != null) ? new ArrayList<>(tmpLines) : new ArrayList<Line>();
         ArrayList<Scene> tmpScenes = in.createTypedArrayList(Scene.CREATOR);
         scenes = (tmpScenes != null) ? new ArrayList<>(tmpScenes) : new ArrayList<Scene>();
         allVoices = new ArrayList<>();
         in.readStringList(allVoices);
-        Serializable tmpVoices = in.readSerializable();
-        this.actorVoices = (tmpVoices == null) ? new HashMap<String, String>() : (HashMap<String, String>) tmpVoices;
+        Serializable tmpActorVoices = in.readSerializable();
+        this.actorVoices = (tmpActorVoices == null) ? new HashMap<String, String>() : (HashMap<String, String>) tmpActorVoices;
         id = in.readLong();
 
         if (actors.size() == 0 || !actors.get(0).equals(Actor.ACTION)) {

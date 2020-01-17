@@ -18,6 +18,7 @@ package com.brokenshotgun.runlines.model;
 
 import android.os.Parcel;
 import android.os.Parcelable;
+
 import androidx.annotation.NonNull;
 
 import java.util.regex.Matcher;
@@ -113,6 +114,7 @@ public class Line implements Parcelable {
         return lineHtml;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "Line{" +

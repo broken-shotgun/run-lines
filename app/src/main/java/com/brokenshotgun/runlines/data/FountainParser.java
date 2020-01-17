@@ -269,15 +269,15 @@ public class FountainParser {
     public static String format(Script script) {
         StringBuilder builder = new StringBuilder();
 
-        builder.append("Title: " + script.getName() + "\n\n");
+        builder.append("Title: ").append(script.getName()).append("\n\n");
 
         for (Scene scene : script.getScenes()) {
-            builder.append(scene.getName().toUpperCase() + "\n\n");
+            builder.append(scene.getName().toUpperCase()).append("\n\n");
 
             for (Line line : scene.getLines()) {
                 String name = line.getActor().getName().toUpperCase();
-                if (!name.equals("")) builder.append(name + "\n");
-                builder.append(line.getLine() + "\n\n");
+                if (!name.equals("")) builder.append(name).append("\n");
+                builder.append(line.getLine()).append("\n\n");
             }
         }
 

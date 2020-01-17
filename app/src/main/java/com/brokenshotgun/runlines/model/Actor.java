@@ -19,6 +19,8 @@ package com.brokenshotgun.runlines.model;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import androidx.annotation.NonNull;
+
 public class Actor implements Parcelable {
     private String name;
 
@@ -33,6 +35,7 @@ public class Actor implements Parcelable {
         return name;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return name;
