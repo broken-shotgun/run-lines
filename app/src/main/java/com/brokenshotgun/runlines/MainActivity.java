@@ -59,6 +59,7 @@ import com.brokenshotgun.runlines.utils.ScriptUtil;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 import com.kobakei.ratethisapp.RateThisApp;
+import com.tom_roush.pdfbox.io.MemoryUsageSetting;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.text.PDFTextStripper;
 import com.tom_roush.pdfbox.util.PDFBoxResourceLoader;
@@ -447,7 +448,7 @@ public class MainActivity extends AppCompatActivity {
                             importCallback.onFailure();
                         return;
                     }
-                    document = PDDocument.load(fileStream);
+                    document = PDDocument.load(fileStream, MemoryUsageSetting.setupTempFileOnly());
                     PDFTextStripper textStripper = new PDFTextStripper();
                     textStripper.setAddMoreFormatting(true);
                     textStripper.setLineSeparator("\n");

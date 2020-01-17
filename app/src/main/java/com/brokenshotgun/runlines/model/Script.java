@@ -19,6 +19,8 @@ package com.brokenshotgun.runlines.model;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import androidx.annotation.NonNull;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -123,6 +125,7 @@ public class Script implements Parcelable {
         return allVoices;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "Script{" +

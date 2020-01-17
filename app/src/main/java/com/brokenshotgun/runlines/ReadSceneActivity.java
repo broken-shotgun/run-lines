@@ -157,6 +157,12 @@ public class ReadSceneActivity extends AppCompatActivity {
         playButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                if (sceneIndex < 0 || sceneIndex >= script.getScenes().size()) {
+                    Snackbar.make(view, R.string.alert_invalid_scene_index, Snackbar.LENGTH_LONG)
+                            .show();
+                    return;
+                }
+
                 if (script.getScene(sceneIndex).getLines().isEmpty()) {
                     Snackbar.make(view, R.string.alert_no_lines, Snackbar.LENGTH_LONG)
                             .show();

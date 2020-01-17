@@ -113,4 +113,5 @@
     <string name="alert_read_permission_denied">Cannot import script without read permission!</string>
     <string name="no_intent_handler">There are no applications available to handle this action.</string>
     <string name="alert_error_file_open">Error: could not import file.</string>
+    <string name="alert_invalid_scene_index">Invalid scene index, please check that your script is properly formatted.</string>
 </resources>
