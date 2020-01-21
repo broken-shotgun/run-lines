@@ -315,7 +315,7 @@ public class ReadSceneActivity extends AppCompatActivity {
                 showToggleLinesDialog();
                 return true;
             case R.id.edit_settings:
-                onEditScriptButtonClicked();
+                onEditScriptButtonClicked(null);
                 return true;
             case R.id.toggle_actions:
                 actionsEnabled = !item.isChecked();
@@ -438,7 +438,7 @@ public class ReadSceneActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
     }
 
-    public void onEditScriptButtonClicked() {
+    public void onEditScriptButtonClicked(View view) {
         Intent editIntent = new Intent(this, EditSceneActivity.class);
         editIntent.putExtra("script", script);
         editIntent.putExtra("sceneIndex", sceneIndex);
