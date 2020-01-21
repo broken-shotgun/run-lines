@@ -118,7 +118,6 @@ public class ReadSceneActivity extends AppCompatActivity {
         refreshEnabledActors(disabledActorSet);
 
         linesListView = findViewById(R.id.lines_list);
-        assert linesListView != null;
         lineArrayAdapter = new LineArrayAdapter(this, new ArrayList<Line>());
         linesListView.setAdapter(lineArrayAdapter);
         linesListView.setNestedScrollingEnabled(true);
@@ -178,10 +177,6 @@ public class ReadSceneActivity extends AppCompatActivity {
         FloatingActionButton prevButton = findViewById(R.id.prev);
         FloatingActionButton nextButton = findViewById(R.id.next);
         FloatingActionButton stopButton = findViewById(R.id.stop);
-
-        assert prevButton != null;
-        assert nextButton != null;
-        assert stopButton != null;
 
         prevButton.setOnClickListener(new View.OnClickListener() {
             @Override

@@ -126,11 +126,6 @@ public class MainActivity extends AppCompatActivity {
         final FloatingActionButton addScriptButton = findViewById(R.id.add_script);
         final FloatingActionButton importScriptButton = findViewById(R.id.import_script);
 
-        assert scriptListView != null;
-        assert addScriptMenuButton != null;
-        assert addScriptButton != null;
-        assert importScriptButton != null;
-
         fabOpen = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.fab_open);
         fabClose = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.fab_close);
         fabRotateClockwise = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.fab_rotate_clockwise);
@@ -230,13 +225,11 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.import_script:
-                showImportFileSelect();
-                return true;
-            default:
-                return super.onOptionsItemSelected(item);
+        if (item.getItemId() == R.id.import_script) {
+            showImportFileSelect();
+            return true;
         }
+        return super.onOptionsItemSelected(item);
     }
 
     private void openScript(Script script) {
