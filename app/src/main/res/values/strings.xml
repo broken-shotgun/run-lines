@@ -74,7 +74,6 @@
         <item>Remove actor</item>
     </string-array>
     <string-array name="edit_script_options">
-        <item>Export script</item>
         <item>Edit name</item>
         <item>Delete</item>
     </string-array>
@@ -115,4 +114,5 @@
     <string name="alert_error_file_open">Error: could not import file.</string>
     <string name="alert_invalid_scene_index">Invalid scene index, please check that your script is properly formatted.</string>
     <string name="button_edit_script">Edit Scene</string>
+    <string name="send_to">Choose what to do with exported script</string>
 </resources>

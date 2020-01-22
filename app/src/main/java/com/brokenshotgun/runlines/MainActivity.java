@@ -17,7 +17,6 @@
 package com.brokenshotgun.runlines;
 
 import android.Manifest;
-import android.annotation.TargetApi;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
@@ -25,7 +24,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.OpenableColumns;
@@ -53,9 +51,7 @@ import com.brokenshotgun.runlines.data.PdfParser;
 import com.brokenshotgun.runlines.data.ScriptReaderDbHelper;
 import com.brokenshotgun.runlines.model.Script;
 import com.brokenshotgun.runlines.utils.DialogUtil;
-import com.brokenshotgun.runlines.utils.FileUtil;
 import com.brokenshotgun.runlines.utils.Intents;
-import com.brokenshotgun.runlines.utils.ScriptUtil;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 import com.kobakei.ratethisapp.RateThisApp;
@@ -65,7 +61,6 @@ import com.tom_roush.pdfbox.text.PDFTextStripper;
 import com.tom_roush.pdfbox.util.PDFBoxResourceLoader;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -192,7 +187,6 @@ public class MainActivity extends AppCompatActivity {
         if (savedInstanceState == null) {
             Intent intent = getIntent();
             if (Intent.ACTION_VIEW.equals(intent.getAction())) {
-                //Log.d(MainActivity.class.getName(), intent.getData().toString());
                 showImportProgressDialog();
                 importScriptFromText(intent.getData(), importScriptHandler);
                 intent.setData(null);
@@ -238,9 +232,8 @@ public class MainActivity extends AppCompatActivity {
         startActivity(openIntent);
     }
 
-    private static final int OPTION_EXPORT_SCRIPT = 0;
-    private static final int OPTION_EDIT_NAME = 1;
-    private static final int OPTION_REMOVE = 2;
+    private static final int OPTION_EDIT_NAME = 0;
+    private static final int OPTION_REMOVE = 1;
 
     private void showEditScriptDialog(final Script script, final int position) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -249,9 +242,6 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 switch (which) {
-                    case OPTION_EXPORT_SCRIPT:
-                        exportScript(script);
-                        break;
                     case OPTION_EDIT_NAME:
                         showEditScriptNameDialog(script, position);
                         break;
@@ -359,42 +349,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private static final int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 0;
-    private static final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 1;
-    private Script tmpExportScript;
 
-    private void exportScript(final Script script) {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            tmpExportScript = script;
-            requestWriteExternalStoragePermission();
-            return;
-        }
-
-        File exportFile = new File(FileUtil.getDocStorageDir(), script.getName() + ".fountain");
-        ScriptUtil.exportScript(script, exportFile, new ScriptUtil.ExportScriptHandler() {
-            @Override
-            public void onSuccess(File exportFile) {
-                Snackbar.make(scriptListView, getString(R.string.alert_script_export_success) + " " + exportFile.getPath(), Snackbar.LENGTH_LONG).show();
-            }
-
-            @Override
-            public void onError() {
-                Snackbar.make(scriptListView, R.string.alert_script_export_error, Snackbar.LENGTH_LONG).show();
-            }
-        });
-    }
-
-    @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
     private void requestReadExternalStoragePermission() {
         ActivityCompat.requestPermissions(this,
                 new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
                 MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
-    }
-
-    @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
-    private void requestWriteExternalStoragePermission() {
-        ActivityCompat.requestPermissions(this,
-                new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
     }
 
     private static final int IMPORT_FILE_SELECT_REQUEST = 0;
@@ -587,25 +546,13 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        switch (requestCode) {
-            case MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE:
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Snackbar.make(scriptListView, R.string.alert_read_permission_granted, Snackbar.LENGTH_LONG).show();
-                    showImportFileSelect();
-                } else {
-                    Snackbar.make(scriptListView, R.string.alert_read_permission_denied, Snackbar.LENGTH_LONG).show();
-                }
-                break;
-            case MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE:
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Snackbar.make(scriptListView, R.string.alert_write_permission_granted, Snackbar.LENGTH_LONG).show();
-                    if (tmpExportScript != null) {
-                        exportScript(tmpExportScript);
-                    }
-                } else {
-                    Snackbar.make(scriptListView, R.string.alert_write_permission_denied, Snackbar.LENGTH_LONG).show();
-                }
-                break;
+        if (requestCode == MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Snackbar.make(scriptListView, R.string.alert_read_permission_granted, Snackbar.LENGTH_LONG).show();
+                showImportFileSelect();
+            } else {
+                Snackbar.make(scriptListView, R.string.alert_read_permission_denied, Snackbar.LENGTH_LONG).show();
+            }
         }
     }
 }
