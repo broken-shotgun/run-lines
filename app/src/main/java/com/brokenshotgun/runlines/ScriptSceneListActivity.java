@@ -26,7 +26,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -154,34 +153,8 @@ public class ScriptSceneListActivity extends AppCompatActivity {
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType("text/plain");
         intent.putExtra(Intent.EXTRA_TITLE, script.getName() + ".fountain");
-
-        // Optionally, specify a URI for the directory that should be opened in
-        // the system file picker when your app creates the document.
-        //intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, pickerInitialUri);
-
         startActivityForResult(intent, CREATE_FILE_REQUEST);
-
-//        File exportFile = new File(FileUtil.getDocStorageDir(), script.getName() + ".fountain");
-//        ScriptUtil.exportScript(script, exportFile, new ScriptUtil.ExportScriptHandler() {
-//            @Override
-//            public void onSuccess(File exportFile) {
-//                Snackbar.make(sceneListView, getString(R.string.alert_script_export_success) + " " + exportFile.getPath(), Snackbar.LENGTH_LONG).show();
-//            }
-//
-//            @Override
-//            public void onError() {
-//                Snackbar.make(sceneListView, R.string.alert_script_export_error, Snackbar.LENGTH_LONG).show();
-//            }
-//        });
     }
-
-//    private void shareScript(Script script) {
-//        Intent shareIntent = new Intent();
-//        shareIntent.setAction(Intent.ACTION_SEND);
-//        shareIntent.putExtra(Intent.EXTRA_STREAM, script);
-//        shareIntent.setType("text/plain");
-//        startActivity(Intent.createChooser(shareIntent, getResources().getText(R.string.send_to)));
-//    }
 
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
     private void requestWriteExternalStoragePermission() {
