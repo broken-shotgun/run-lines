@@ -16,14 +16,13 @@
 
 package com.brokenshotgun.runlines;
 
-import android.Manifest;
-import android.annotation.TargetApi;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.ParcelFileDescriptor;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -33,24 +32,20 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 
 import com.brokenshotgun.runlines.adapters.SceneArrayAdapter;
+import com.brokenshotgun.runlines.data.FountainParser;
 import com.brokenshotgun.runlines.data.ScriptReaderDbHelper;
 import com.brokenshotgun.runlines.model.Scene;
 import com.brokenshotgun.runlines.model.Script;
 import com.brokenshotgun.runlines.utils.DialogUtil;
-import com.brokenshotgun.runlines.utils.FileUtil;
-import com.brokenshotgun.runlines.utils.ScriptUtil;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
-import java.io.File;
-import java.util.Objects;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 public class ScriptSceneListActivity extends AppCompatActivity {
     private Script script;
@@ -138,38 +133,16 @@ public class ScriptSceneListActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    private static final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 1;
-    private Script tmpExportScript;
-
     private void exportScript(final Script script) {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            tmpExportScript = script;
-            requestWriteExternalStoragePermission();
-            return;
-        }
-
-        File exportFile = new File(FileUtil.getDocStorageDir(), script.getName() + ".fountain");
-        ScriptUtil.exportScript(script, exportFile, new ScriptUtil.ExportScriptHandler() {
-            @Override
-            public void onSuccess(File exportFile) {
-                Snackbar.make(sceneListView, getString(R.string.alert_script_export_success) + " " + exportFile.getPath(), Snackbar.LENGTH_LONG).show();
-            }
-
-            @Override
-            public void onError() {
-                Snackbar.make(sceneListView, R.string.alert_script_export_error, Snackbar.LENGTH_LONG).show();
-            }
-        });
-    }
-
-    @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
-    private void requestWriteExternalStoragePermission() {
-        ActivityCompat.requestPermissions(this,
-                new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("text/plain");
+        intent.putExtra(Intent.EXTRA_TITLE, script.getName() + ".fountain");
+        startActivityForResult(intent, CREATE_FILE_REQUEST);
     }
 
     private static final int OPEN_SCRIPT_REQUEST = 0;
+    private static final int CREATE_FILE_REQUEST = 1;
 
     private void openScene(int sceneIndex) {
         Intent readIntent = new Intent(this, ReadSceneActivity.class);
@@ -232,23 +205,72 @@ public class ScriptSceneListActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == OPEN_SCRIPT_REQUEST) {
+            if (resultCode == RESULT_OK && data != null) {
+                Script file = data.getParcelableExtra("script");
+                if (file != null) {
+                    script.copy(file);
+                    sceneArrayAdapter.notifyDataSetInvalidated();
+                }
+            }
+        }
+
+        if (requestCode == CREATE_FILE_REQUEST) {
             if (resultCode == RESULT_OK) {
-                script.copy((Script) Objects.requireNonNull(data.getParcelableExtra("script")));
-                sceneArrayAdapter.notifyDataSetInvalidated();
+                if (data != null) {
+                    Uri uri = data.getData();
+                    exportScript(script, uri, new ExportScriptHandler() {
+                        @Override
+                        public void onSuccess() {
+                            Snackbar.make(sceneListView, getString(R.string.alert_script_export_success), Snackbar.LENGTH_LONG).show();
+                        }
+
+                        @Override
+                        public void onError() {
+                            Snackbar.make(sceneListView, R.string.alert_script_export_error, Snackbar.LENGTH_LONG).show();
+                        }
+                    });
+                }
             }
         }
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (requestCode == MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Snackbar.make(sceneListView, R.string.alert_write_permission_granted, Snackbar.LENGTH_LONG).show();
-                if (tmpExportScript != null) {
-                    exportScript(tmpExportScript);
+    interface ExportScriptHandler {
+        void onSuccess();
+        void onError();
+    }
+
+    private void exportScript(Script script, Uri exportFileUri, ExportScriptHandler exportScriptHandler) {
+        String fountainScript = FountainParser.format(script);
+        ParcelFileDescriptor pfd = null;
+        FileOutputStream fileOutputStream = null;
+        try {
+            pfd = getContentResolver().openFileDescriptor(exportFileUri, "w");
+            if (pfd != null) {
+                fileOutputStream = new FileOutputStream(pfd.getFileDescriptor());
+                fileOutputStream.write(fountainScript.getBytes());
+                fileOutputStream.close();
+                pfd.close();
+                fileOutputStream = null;
+                pfd = null;
+                if (exportScriptHandler != null) exportScriptHandler.onSuccess();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            if (exportScriptHandler != null) exportScriptHandler.onError();
+        } finally {
+            if (fileOutputStream != null) {
+                try {
+                    fileOutputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-            } else {
-                Snackbar.make(sceneListView, R.string.alert_write_permission_denied, Snackbar.LENGTH_LONG).show();
+            }
+            if (pfd != null) {
+                try {
+                    pfd.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }

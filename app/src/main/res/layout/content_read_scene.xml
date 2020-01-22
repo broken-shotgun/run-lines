@@ -35,4 +35,29 @@
         android:divider="@android:color/transparent"
         android:dividerHeight="5dp" />
 
+    <LinearLayout
+        android:id="@android:id/empty"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="20dp"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/read_script_empty_list_label"
+            android:textSize="20sp"
+            android:gravity="center_horizontal"
+            android:ellipsize="none"
+            android:maxLines="100"
+            android:scrollHorizontally="false"/>
+
+        <Button
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/button_edit_script"
+            android:onClick="onEditScriptButtonClicked" />
+    </LinearLayout>
+
 </LinearLayout>

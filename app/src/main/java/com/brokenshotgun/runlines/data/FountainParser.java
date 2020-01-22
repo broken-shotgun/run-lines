@@ -272,11 +272,15 @@ public class FountainParser {
         builder.append("Title: ").append(script.getName()).append("\n\n");
 
         for (Scene scene : script.getScenes()) {
-            builder.append(scene.getName().toUpperCase()).append("\n\n");
+            String sceneName = scene.getName().toUpperCase();
+            if (!sceneName.startsWith("INT. ") && !sceneName.startsWith("EXT. ")) {
+                sceneName = "INT. " + sceneName;
+            }
+            builder.append(sceneName).append("\n\n");
 
             for (Line line : scene.getLines()) {
-                String name = line.getActor().getName().toUpperCase();
-                if (!name.equals("")) builder.append(name).append("\n");
+                String actorName = line.getActor().getName().toUpperCase();
+                if (!actorName.equals("") && !actorName.equals(Actor.ACTION_NAME)) builder.append(actorName).append("\n");
                 builder.append(line.getLine()).append("\n\n");
             }
         }

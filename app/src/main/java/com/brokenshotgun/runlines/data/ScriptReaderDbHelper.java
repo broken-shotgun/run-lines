@@ -57,7 +57,7 @@ public class ScriptReaderDbHelper extends SQLiteOpenHelper {
         gson = new GsonBuilder().create();
     }
 
-    public long insertScript(Script script) {
+    public void insertScript(Script script) {
         SQLiteDatabase db = getWritableDatabase();
 
         ContentValues sValues = new ContentValues();
@@ -71,8 +71,6 @@ public class ScriptReaderDbHelper extends SQLiteOpenHelper {
                 sValues);
 
         script.id = newScriptId;
-
-        return newScriptId;
     }
 
     public void updateScript(Script script) {
@@ -143,10 +141,9 @@ public class ScriptReaderDbHelper extends SQLiteOpenHelper {
 
     private Script deserialize(String json) {
         try {
-            Log.e(ScriptReaderDbHelper.class.getName(), "Deserialize attempt #1 failed");
             return gson.fromJson(json, Script.class);
-        } catch (Exception unknownEx) {
-            Log.e(ScriptReaderDbHelper.class.getName(), "Deserialize attempt #2 failed");
+        } catch (Exception e) {
+            Log.e(ScriptReaderDbHelper.class.getName(), e.getMessage(), e);
             return new Script("Error");
         }
     }

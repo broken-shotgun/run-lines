@@ -47,7 +47,7 @@
     <string name="title_dialog_edit_script_name">Edit script name</string>
     <string name="hint_edit_script_name">Add script name…</string>
     <string name="button_add_lines">Add Lines</string>
-    <string name="read_script_empty_list_label">This script is so fresh out of the oven, it doesn\'t even have lines, yet!</string>
+    <string name="read_script_empty_list_label">This scene is so fresh out of the oven, it doesn\'t even have lines, yet!\n\nEdit scene to add characters and lines.\n\n</string>
     <string name="alert_no_lines">No lines to read</string>
     <string name="alert_reading">Reading lines…</string>
     <string name="alert_no_tts">Text to speech engine not initialized, do you have Text-to-speech data installed?</string>
@@ -57,8 +57,6 @@
     <string name="alert_script_import_success">Script imported successfully!</string>
     <string name="alert_script_export_success">Script successfully exported!</string>
     <string name="alert_script_export_error">Error: script did not export</string>
-    <string name="alert_read_permission_granted">Read permission granted!  Import is now enabled</string>
-    <string name="alert_write_permission_granted">Write permission granted!  Export is now enabled</string>
     <string name="alert_script_import_error">Error: invalid script file</string>
     <string name="tts_settings">TTS Settings</string>
     <string name="speech_rate">Speech rate: %s</string>
@@ -74,7 +72,6 @@
         <item>Remove actor</item>
     </string-array>
     <string-array name="edit_script_options">
-        <item>Export script</item>
         <item>Edit name</item>
         <item>Delete</item>
     </string-array>
@@ -109,9 +106,9 @@
     <string name="alert_invalid_filename">Invalid filename</string>
     <string name="alert_tts_not_available">Text to speech is not available on your device.</string>
     <string name="export_script">Export script</string>
-    <string name="alert_write_permission_denied">Cannot export script without write permission!</string>
-    <string name="alert_read_permission_denied">Cannot import script without read permission!</string>
     <string name="no_intent_handler">There are no applications available to handle this action.</string>
     <string name="alert_error_file_open">Error: could not import file.</string>
     <string name="alert_invalid_scene_index">Invalid scene index, please check that your script is properly formatted.</string>
+    <string name="button_edit_script">Edit Scene</string>
+    <string name="send_to">Choose what to do with exported script</string>
 </resources>
