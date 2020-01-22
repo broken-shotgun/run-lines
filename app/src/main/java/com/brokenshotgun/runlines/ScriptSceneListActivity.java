@@ -267,7 +267,6 @@ public class ScriptSceneListActivity extends AppCompatActivity {
             if (resultCode == RESULT_OK) {
                 if (data != null) {
                     Uri uri = data.getData();
-                    Log.d(ScriptSceneListActivity.class.getName(), script.toString());
                     exportScript(script, uri, new ExportScriptHandler() {
                         @Override
                         public void onSuccess() {
