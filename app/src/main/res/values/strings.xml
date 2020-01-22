@@ -57,8 +57,6 @@
     <string name="alert_script_import_success">Script imported successfully!</string>
     <string name="alert_script_export_success">Script successfully exported!</string>
     <string name="alert_script_export_error">Error: script did not export</string>
-    <string name="alert_read_permission_granted">Read permission granted!  Import is now enabled</string>
-    <string name="alert_write_permission_granted">Write permission granted!  Export is now enabled</string>
     <string name="alert_script_import_error">Error: invalid script file</string>
     <string name="tts_settings">TTS Settings</string>
     <string name="speech_rate">Speech rate: %s</string>
@@ -108,8 +106,6 @@
     <string name="alert_invalid_filename">Invalid filename</string>
     <string name="alert_tts_not_available">Text to speech is not available on your device.</string>
     <string name="export_script">Export script</string>
-    <string name="alert_write_permission_denied">Cannot export script without write permission!</string>
-    <string name="alert_read_permission_denied">Cannot import script without read permission!</string>
     <string name="no_intent_handler">There are no applications available to handle this action.</string>
     <string name="alert_error_file_open">Error: could not import file.</string>
     <string name="alert_invalid_scene_index">Invalid scene index, please check that your script is properly formatted.</string>

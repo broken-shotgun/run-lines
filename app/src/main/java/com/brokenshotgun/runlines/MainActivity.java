@@ -16,12 +16,10 @@
 
 package com.brokenshotgun.runlines;
 
-import android.Manifest;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -39,11 +37,8 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 
 import com.brokenshotgun.runlines.adapters.ScriptArrayAdapter;
 import com.brokenshotgun.runlines.data.FountainParser;
@@ -350,20 +345,9 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 0;
 
-    private void requestReadExternalStoragePermission() {
-        ActivityCompat.requestPermissions(this,
-                new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
-    }
-
     private static final int IMPORT_FILE_SELECT_REQUEST = 0;
 
     public void showImportFileSelect() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            requestReadExternalStoragePermission();
-            return;
-        }
-
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         Uri uri = Uri.parse(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS).getPath() + "\\Run Lines\\");
         intent.setDataAndType(uri, "*/*");
@@ -542,17 +526,5 @@ public class MainActivity extends AppCompatActivity {
         progressDialog.setTitle(getString(R.string.title_dialog_importing));
         progressDialog.setMessage(getString(R.string.message_dialog_importing));
         progressDialog.show();
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (requestCode == MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Snackbar.make(scriptListView, R.string.alert_read_permission_granted, Snackbar.LENGTH_LONG).show();
-                showImportFileSelect();
-            } else {
-                Snackbar.make(scriptListView, R.string.alert_read_permission_denied, Snackbar.LENGTH_LONG).show();
-            }
-        }
     }
 }

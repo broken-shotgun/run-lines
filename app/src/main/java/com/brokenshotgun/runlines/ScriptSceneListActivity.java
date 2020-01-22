@@ -16,12 +16,9 @@
 
 package com.brokenshotgun.runlines;
 
-import android.Manifest;
-import android.annotation.TargetApi;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -35,11 +32,8 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 
 import com.brokenshotgun.runlines.adapters.SceneArrayAdapter;
 import com.brokenshotgun.runlines.data.FountainParser;
@@ -139,28 +133,12 @@ public class ScriptSceneListActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    private static final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 1;
-    private Script tmpExportScript;
-
     private void exportScript(final Script script) {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            tmpExportScript = script;
-            requestWriteExternalStoragePermission();
-            return;
-        }
-
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType("text/plain");
         intent.putExtra(Intent.EXTRA_TITLE, script.getName() + ".fountain");
         startActivityForResult(intent, CREATE_FILE_REQUEST);
-    }
-
-    @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
-    private void requestWriteExternalStoragePermission() {
-        ActivityCompat.requestPermissions(this,
-                new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
     }
 
     private static final int OPEN_SCRIPT_REQUEST = 0;
@@ -293,20 +271,6 @@ public class ScriptSceneListActivity extends AppCompatActivity {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-            }
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (requestCode == MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Snackbar.make(sceneListView, R.string.alert_write_permission_granted, Snackbar.LENGTH_LONG).show();
-                if (tmpExportScript != null) {
-                    exportScript(tmpExportScript);
-                }
-            } else {
-                Snackbar.make(sceneListView, R.string.alert_write_permission_denied, Snackbar.LENGTH_LONG).show();
             }
         }
     }
