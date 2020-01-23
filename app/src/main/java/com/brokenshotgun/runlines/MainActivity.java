@@ -276,8 +276,9 @@ public class MainActivity extends AppCompatActivity {
         builder.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                if (scriptListAdapter.getItem(position) != null) {
-                    scriptListAdapter.getItem(position).setName(inputText.getText().toString().trim());
+                Script selectedScript = scriptListAdapter.getItem(position);
+                if (selectedScript != null) {
+                    selectedScript.setName(inputText.getText().toString().trim());
                     scriptListAdapter.notifyDataSetInvalidated();
                     dbHelper.updateScript(script);
                 }
@@ -342,8 +343,6 @@ public class MainActivity extends AppCompatActivity {
     public void onImportScriptButtonClicked(View view) {
         showImportFileSelect();
     }
-
-    private static final int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 0;
 
     private static final int IMPORT_FILE_SELECT_REQUEST = 0;
 
