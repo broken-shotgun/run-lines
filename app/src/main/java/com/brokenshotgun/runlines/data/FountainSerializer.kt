@@ -1,7 +1,7 @@
 package com.brokenshotgun.runlines.data
 
 import com.brokenshotgun.runlines.model.Script
-import java.lang.Exception
+import java.util.*
 
 object FountainSerializer {
     const val UNIVERSAL_LINE_BREAKS_PATTERN  = "\\r\\n|\\r|\\n"
@@ -107,16 +107,15 @@ object FountainSerializer {
     fun deserialize(script: String): Script {
         val titleTokens = parseTitlePageOfString(getScriptTitlePage(script))
         val bodyTokens = parseBodyOfString(getScriptBody(script))
-        val allTokens = titleTokens + bodyTokens
 
         // for debugging only
-        println("##### all tokens for Script =")
-        for(token in allTokens) {
+        println("##### all tokens for Script #####")
+        println(titleTokens)
+        for(token in bodyTokens) {
             println("<${token.elementType}>${token.elementText}</${token.elementType}>")
         }
 
-
-        return Script(allTokens)
+        return Script(bodyTokens)
     }
 
     private fun parseBodyOfString(scriptBody: String) : Array<FNElement> {
@@ -164,7 +163,7 @@ object FountainSerializer {
                 CHARACTER_CUE_TEMPLATE, PARENTHETICAL_TEMPLATE, DIALOGUE_TEMPLATE, SECTION_HEADER_TEMPLATE,
                 ACTION_TEMPLATE, CLEANUP_TEMPLATE, NEWLINE_RESTORE)
 
-        if (patterns.size != templates.size) {
+        if (patterns.count() != templates.count()) {
             throw Exception("The pattern and template arrays don't have the same number of objects!")
         }
 
@@ -213,7 +212,7 @@ object FountainSerializer {
             }
 
             if ([element.elementType isEqualToString:@"Scene Heading"]) {
-                // Check for a forced scene heading. Remove preceeding dot.
+                // Check for a forced scene heading. Remove preceding dot.
                 element.elementText = [element.elementText stringByMatching:@"^\\.?(.+)" capture:1];
             }
 
@@ -253,70 +252,66 @@ object FountainSerializer {
         return elementsArray.toTypedArray()
     }
 
-    private fun parseTitlePageOfString(scriptTitle: String) : Array<FNElement> {
-        val elementsArray = mutableListOf<FNElement>()
-
-        /*
-        NSMutableString *rawTitlePage = [NSMutableString stringWithString:[self titlePageOfString:string]];
-        NSMutableArray *contents = [NSMutableArray array];
+    private fun parseTitlePageOfString(scriptTitle: String) : Map<String, List<String>> {
+        val contents = mutableMapOf<String, List<String>>()
 
         // Line by line parsing
         // split the title page using newlines, then walk through the array and determine what is what
         // this allows us to look for very specific things and better handle non-uniform title pages
 
         // split the string
-        NSArray *splitTitlePage = [rawTitlePage componentsSeparatedByString:@"\n"];
-
-        NSString *openDirective = nil;
-        NSMutableArray *directiveData = [NSMutableArray array];
-
-        for (NSString *line in splitTitlePage) {
+        val splitTitlePage = scriptTitle.split("\n")
+        var openDirective: String? = null
+        val directiveData = mutableListOf<String>()
+        for (line in splitTitlePage) {
             // is this an inline directive or a multi-line one?
-            if ([line isMatchedByRegex:INLINE_DIRECTIVE_PATTERN]) {
-                // if there's an openDirective with data, save it
-                if (openDirective != nil && [directiveData count] > 0) {
-                    [contents addObject:@{openDirective: directiveData}];
-                    directiveData = [NSMutableArray array];
+            val inlineResult = INLINE_DIRECTIVE_PATTERN.toRegex().find(line)
+            if (inlineResult != null) {
+                if (openDirective != null && directiveData.count() > 0) {
+                    contents[openDirective] = directiveData.toList()
+                    directiveData.clear()
                 }
-                openDirective = nil;
+                openDirective = null
 
-                NSString *key = [[line stringByMatching:INLINE_DIRECTIVE_PATTERN capture:1] lowercaseString];
-                NSString *val = [line stringByMatching:INLINE_DIRECTIVE_PATTERN capture:2];
-
-                // validation
-                if ([key isEqualToString:@"author"] || [key isEqualToString:@"author(s)"]) {
-                    key = @"authors";
-                }
-
-                [contents addObject:@{key: @[val]}];
-            }
-            else if ([line isMatchedByRegex:MULTI_LINE_DIRECTIVE_PATTERN]) {
-                // if there's an openDirective with data, save it
-                if (openDirective != nil && [directiveData count] > 0) {
-                    [contents addObject:@{openDirective: directiveData}];
-                }
-
-                openDirective = [[line stringByMatching:MULTI_LINE_DIRECTIVE_PATTERN capture:1] lowercaseString];
-                directiveData = [NSMutableArray array];
+                var key = inlineResult.groupValues[1].toLowerCase(Locale.getDefault())
+                val value = inlineResult.groupValues[2]
 
                 // validation
-                if ([openDirective isEqualToString:@"author"] || [openDirective isEqualToString:@"author(s)"]) {
-                    openDirective = @"authors";
+                if (key == "author" || key == "author(s)") {
+                    key = "authors"
                 }
+
+                contents[key] = listOf(value)
+                continue
             }
-            else {
-                if ([line stringByMatching:MULTI_LINE_DATA_PATTERN capture:2]) {
-                    [directiveData addObject:[line stringByMatching:MULTI_LINE_DATA_PATTERN capture:2]];
+
+            val multiLineDirectiveResult = MULTI_LINE_DIRECTIVE_PATTERN.toRegex().find(line)
+            if (multiLineDirectiveResult != null) {
+                if (openDirective != null && directiveData.count() > 0) {
+                    contents[openDirective] = directiveData.toList()
                 }
+
+                openDirective = multiLineDirectiveResult.groupValues[1].toLowerCase(Locale.getDefault())
+                directiveData.clear()
+
+                if (openDirective == "author" || openDirective == "author(s)") {
+                    openDirective = "authors"
+                }
+
+                continue
+            }
+
+            val multiLineDataResult = MULTI_LINE_DATA_PATTERN.toRegex().find(line)
+            if (multiLineDataResult != null) {
+                directiveData += multiLineDataResult.groupValues[2]
             }
         }
 
-        if (openDirective != nil && [directiveData count] > 0) {
-            [contents addObject:@{openDirective: directiveData}];
+        if (openDirective != null && directiveData.count() > 0) {
+            contents[openDirective] = directiveData.toList()
         }
-        return contents;
-         */
-        return elementsArray.toTypedArray()
+
+        return contents.toMap()
     }
 
     private fun getScriptBody(script: String) : String {
