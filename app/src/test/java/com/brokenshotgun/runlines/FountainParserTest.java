@@ -16,6 +16,8 @@
 
 package com.brokenshotgun.runlines;
 
+import androidx.annotation.NonNull;
+
 import com.brokenshotgun.runlines.data.FountainSerializer;
 import com.brokenshotgun.runlines.model.Actor;
 import com.brokenshotgun.runlines.model.Line;
@@ -78,17 +80,22 @@ public class FountainParserTest {
 
     @Test
     public void testDeserializeScript() throws Exception {
-        ClassLoader classLoader = getClass().getClassLoader();
-        assert classLoader != null;
-        URL resource = classLoader.getResource("bigfish.fountain.txt");
-        File file = new File(resource.getPath());
-        String testScriptStr = convertStreamToString(new FileInputStream(file));
-
-        Script result = FountainSerializer.deserialize(testScriptStr);
-        assertNotNull(result);
-
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        System.out.println(gson.toJson(result));
+
+        String bigFishString = convertTextResToString("bigfish.fountain.txt");
+        Script bigFishScript = FountainSerializer.deserialize(bigFishString);
+        assertNotNull(bigFishScript);
+        System.out.println(gson.toJson(bigFishScript));
+
+        String birthdayString = convertTextResToString("The Last Birthday Card.fountain.txt");
+        Script birthdayScript = FountainSerializer.deserialize(birthdayString);
+        assertNotNull(birthdayScript);
+        System.out.println(gson.toJson(birthdayScript));
+
+        String brickSteelString = convertTextResToString("Brick & Steel.fountain.txt");
+        Script brickSteelScript = FountainSerializer.deserialize(brickSteelString);
+        assertNotNull(brickSteelScript);
+        System.out.println(gson.toJson(brickSteelScript));
     }
 
     @Test
@@ -107,8 +114,16 @@ public class FountainParserTest {
         System.out.println(result);
     }
 
+    private String convertTextResToString(@NonNull String testResPath) throws Exception {
+        ClassLoader classLoader = getClass().getClassLoader();
+        assert classLoader != null;
+        URL resource = classLoader.getResource(testResPath);
+        File file = new File(resource.getPath());
+        return convertStreamToString(new FileInputStream(file));
+    }
 
-    private String convertStreamToString(InputStream is) throws Exception {
+
+    private String convertStreamToString(@NonNull InputStream is) throws Exception {
         BufferedReader reader = new BufferedReader(new InputStreamReader(is));
         StringBuilder sb = new StringBuilder();
         String line;
