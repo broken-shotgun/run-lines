@@ -29,22 +29,23 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@Deprecated
 public class FountainParser {
     public static final String GLOBAL_TITLE_PAGE_REGEX = "(?sim)^(title|credit|author[s]?|source|notes|draft date|date|contact|copyright):(.+)";
     public static final String TITLE_PAGE_REGEX = "(?im)^(title|credit|author[s]?|source|notes|draft date|date|contact|copyright):(.+)";
-    public static final String SCENE_HEADING_REGEX = "(?i)^((?:\\*{0,3}_?)?(?:(?:int|ext|est|i\\/e)[. ]).+)|^(?:\\.(?!\\.+))(.+)";
+    public static final String SCENE_HEADING_REGEX = "(?i)^((?:\\*{0,3}_?)?(?:(?:int|ext|est|i/e)[. ]).+)|^(?:\\.(?!\\.+))(.+)";
     public static final String SCENE_NUMBER_REGEX = "( *#(.+)# *)";
-    public static final String TRANSITION_REGEX = "^((?:FADE (?:TO BLACK|OUT)|CUT TO BLACK)\\.|.+ TO\\:)|^(?:> *)(.+)";
+    public static final String TRANSITION_REGEX = "^((?:FADE (?:TO BLACK|OUT)|CUT TO BLACK)\\.|.+ TO:)|^(?:> *)(.+)";
     public static final String DIALOGUE_REGEX = "^([A-Z*_]+[0-9A-Z (._\\-')]*)(\\^?)?(?:\\n(?!\\n+))([\\s\\S]+)";
     public static final String PARENTHETICAL_REGEX = "^(\\(.+\\))$";
     public static final String ACTION_REGEX = "^(.+)";
     public static final String CENTERED_REGEX = "^(?:> *)(.+)(?: *<)(\\n.+)*";
     public static final String SECTION_REGEX = "^(#+)(?: *)(.*)";
-    public static final String SYNOPSIS_REGEX = "^(?:\\=(?!\\=+) *)(.*)";
-    public static final String NOTE_REGEX = "^(?:\\[{2}(?!\\[+))(.+)(?:\\]{2}(?!\\[+))$";
+    public static final String SYNOPSIS_REGEX = "^(?:=(?!=+) *)(.*)";
+    public static final String NOTE_REGEX = "^(?:\\[{2}(?!\\[+))(.+)(?:]{2}(?!\\[+))$";
     public static final String NOTE_INLINE_REGEX = "(?:\\[{2}(?!\\[+))([\\s\\S]+?)(?:\\]{2}(?!\\[+))";
-    public static final String BONEYARD_REGEX = "(^\\/\\*|^\\*\\/)$";
-    public static final String PAGE_BREAK_REGEX = "^\\={3,}$";
+    public static final String BONEYARD_REGEX = "(^/\\*|^\\*/)$";
+    public static final String PAGE_BREAK_REGEX = "^={3,}$";
     public static final String LINE_BREAK_REGEX = "^ {2}$";
     public static final String EMPHASIS_REGEX = "(_|\\*{1,3}|_\\*{1,3}|\\*{1,3}_)(.+)(_|\\*{1,3}|_\\*{1,3}|\\*{1,3}_)";
     public static final String BOLD_ITALIC_UNDERLINE_REGEX = "(_{1}\\*{3}(?=.+\\*{3}_{1})|\\*{3}_{1}(?=.+_{1}\\*{3}))(.+?)(\\*{3}_{1}|_{1}\\*{3})";
@@ -58,6 +59,8 @@ public class FountainParser {
     public static final String CLEANER_REGEX = "^\\n+|\\n+$";
     public static final String STANDARDIZER_REGEX = "\\r\\n|\\r";
     public static final String WHITESPACER_REGEX = "(?m)^\\t+|^ {3,}";
+
+    private static final String TAG = FountainParser.class.getName();
 
     private static String lexer(String script) {
         return script.replace(BONEYARD_REGEX, "\n$1\n")
@@ -214,12 +217,13 @@ public class FountainParser {
             }
 
             if (line.matches(SYNOPSIS_REGEX)) {
-//                match = line.split(SYNOPSIS_REGEX);
-//
-//                Token synopsis = new Token();
-//                synopsis.type = "synopsis";
-//                synopsis.text = match[1];
-//                tokens.add(synopsis);
+                Matcher matcher = Pattern.compile(SYNOPSIS_REGEX).matcher(line);
+                if (matcher.matches()) {
+                    Token synopsis = new Token();
+                    synopsis.type = "synopsis";
+                    synopsis.text = matcher.group(1);
+                    tokens.add(synopsis);
+                }
                 continue;
             }
 
@@ -294,6 +298,17 @@ public class FountainParser {
         public String dual;
         public String scene_number;
         public int depth;
+
+        @Override
+        public String toString() {
+            return "Token{" +
+                    "type='" + type + '\'' +
+                    ", text='" + text + '\'' +
+                    ", dual='" + dual + '\'' +
+                    ", scene_number='" + scene_number + '\'' +
+                    ", depth=" + depth +
+                    '}';
+        }
     }
 
     public static Script parse(String script) {
@@ -304,6 +319,7 @@ public class FountainParser {
         Scene currentScene = null;
         Actor currentActor = null;
         for (Token token : tokens) {
+            System.out.println(token.toString());
             switch (token.type) {
                 case "title":
                     result.setName(token.text);

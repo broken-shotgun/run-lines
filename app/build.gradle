@@ -15,11 +15,14 @@
  */
 
 apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android-extensions'
+apply plugin: 'kotlin-android'
 
 repositories {
     maven {
         url 'https://maven.google.com'
     }
+    mavenCentral()
 }
 
 android {
@@ -62,4 +65,6 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.8.5'
     implementation 'com.tom_roush:pdfbox-android:1.8.10.1'
     implementation 'io.github.kobakei:ratethisapp:1.0.5'
+    implementation "androidx.core:core-ktx:1.1.0"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
 }

@@ -16,12 +16,11 @@
 
 package com.brokenshotgun.runlines;
 
-import com.brokenshotgun.runlines.data.FountainParser;
+import com.brokenshotgun.runlines.data.FountainSerializer;
 import com.brokenshotgun.runlines.model.Actor;
 import com.brokenshotgun.runlines.model.Line;
 import com.brokenshotgun.runlines.model.Scene;
 import com.brokenshotgun.runlines.model.Script;
-import com.brokenshotgun.runlines.model.upgrade.ScriptV073;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -35,8 +34,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 
-import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotNull;
 
 public class FountainParserTest {
 
@@ -45,6 +43,7 @@ public class FountainParserTest {
 
     }
 
+    /*
     @Test
     public void testParseScript() throws Exception {
         ClassLoader classLoader = getClass().getClassLoader();
@@ -75,23 +74,39 @@ public class FountainParserTest {
         String result = FountainParser.format(script);
         System.out.println(result);
     }
+    */
 
     @Test
-    public void testScriptModelUpgrade() throws Exception {
+    public void testDeserializeScript() throws Exception {
         ClassLoader classLoader = getClass().getClassLoader();
         assert classLoader != null;
-        URL resource = classLoader.getResource("test_release_v0.7.3.json");
+        URL resource = classLoader.getResource("bigfish.fountain.txt");
         File file = new File(resource.getPath());
-        String testJson = convertStreamToString(new FileInputStream(file));
+        String testScriptStr = convertStreamToString(new FileInputStream(file));
+
+        Script result = FountainSerializer.deserialize(testScriptStr);
+        assertNotNull(result);
 
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        ScriptV073 test = gson.fromJson(testJson, ScriptV073.class);
-        assertNotNull(test);
+        System.out.println(gson.toJson(result));
+    }
 
-        Script upgrade = test.convert();
-        String result = FountainParser.format(upgrade);
+    @Test
+    public void testSerializeScript() {
+        Script script = new Script("Fountain Format Test Script");
+        Actor actor = new Actor("JASON");
+        script.addActor(actor);
+        Scene scene = new Scene("INT. A CREEPY BASEMENT");
+        script.addScene(scene);
+        scene.addLine(new Line(actor, "hello world"));
+        scene.addAction("Jason whips off his sunglasses");
+        scene.addLine(new Line(actor, "my name is Jason\n(pause)\nAnd this is a test"));
+        scene.addAction("Queue CSI: Miami YEAAAAAAAAAAAAAAAAAH (Won't Get Fooled Again by The Who)");
+
+        String result = FountainSerializer.serialize(script);
         System.out.println(result);
     }
+
 
     private String convertStreamToString(InputStream is) throws Exception {
         BufferedReader reader = new BufferedReader(new InputStreamReader(is));
