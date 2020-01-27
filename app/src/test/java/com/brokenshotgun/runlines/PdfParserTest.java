@@ -37,7 +37,7 @@ public class PdfParserTest {
     public void testParseScript() throws Exception {
         ClassLoader classLoader = getClass().getClassLoader();
         assert classLoader != null;
-        URL resource = classLoader.getResource("Brick & Steel.fountain.txt");
+        URL resource = classLoader.getResource("Brick&Steel.fountain.txt");
         File file = new File(resource.getPath());
         String testScriptStr = convertStreamToString(new FileInputStream(file));
 

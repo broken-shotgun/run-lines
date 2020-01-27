@@ -87,15 +87,25 @@ public class FountainParserTest {
         assertNotNull(bigFishScript);
         System.out.println(gson.toJson(bigFishScript));
 
-        String birthdayString = convertTextResToString("The Last Birthday Card.fountain.txt");
+        String birthdayString = convertTextResToString("TheLastBirthdayCard.fountain.txt");
         Script birthdayScript = FountainSerializer.deserialize(birthdayString);
         assertNotNull(birthdayScript);
         System.out.println(gson.toJson(birthdayScript));
 
-        String brickSteelString = convertTextResToString("Brick & Steel.fountain.txt");
+        String brickSteelString = convertTextResToString("Brick&Steel.fountain.txt");
         Script brickSteelScript = FountainSerializer.deserialize(brickSteelString);
         assertNotNull(brickSteelScript);
         System.out.println(gson.toJson(brickSteelScript));
+    }
+
+    @Test
+    public void testDeserializeSmallScript() throws Exception {
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+
+        String brickSteelString = convertTextResToString("Brick&Steel.fountain.txt");
+        Script brickSteelScript = FountainSerializer.deserialize(brickSteelString);
+        assertNotNull(brickSteelScript);
+        System.out.println("testDeserializeSmallScript> SCRIPT JSON=\n" + gson.toJson(brickSteelScript));
     }
 
     @Test
