@@ -42,8 +42,8 @@ object FountainSerializer {
 
     /** Block Comments */
 
-    const val BLOCK_COMMENT_PATTERN      = "\\n\\/\\*([^<>]+?)\\*\\/\\n"
-    const val BRACKET_COMMENT_PATTERN    = "\\n\\[{2}([^<>]+?)\\]{2}\\n"
+    const val BLOCK_COMMENT_PATTERN      = "\\n/\\*([^<>]+?)\\*/\\n"
+    const val BRACKET_COMMENT_PATTERN    = "\\n\\[{2}([^<>]+?)]{2}\\n"
     const val SYNOPSIS_PATTERN           = "\\n={1}([^<>=][^<>]+?)\\n"     // we need to make sure we don't catch ==== as a synopsis
 
     const val BLOCK_COMMENT_TEMPLATE     = "\n<Boneyard>$1</Boneyard>\n"
@@ -90,12 +90,12 @@ object FountainSerializer {
 
     /** Data classes */
     data class FNElement(
-            val elementType: String,
+            var elementType: String,
             val elementText: String,
-            val isCentered: Boolean = false,
-            val sceneNumber: String = "",
-            val isDualDialogue: Boolean = false,
-            val sectionDepth: Int = 0)
+            var isCentered: Boolean = false,
+            var sceneNumber: String = "",
+            var isDualDialogue: Boolean = false,
+            var sectionDepth: Int = 0)
 
     @JvmStatic
     fun serialize(script: Script): String {
@@ -113,12 +113,18 @@ object FountainSerializer {
         //
         // The intermediate marked up format makes subsequent parsing very simple,
         // even if it means less efficiency overall.
-        //
 
+        parseTitlePageOfString(getScriptTitlePage(script))
+        parseBodyOfString(getScriptBody(script))
+
+        return Script("")
+    }
+
+    fun parseBodyOfString(scriptBody: String) : Array<FNElement> {
         // 1st pass - Block comments
         // The regexes aren't smart enough (yet) to deal with newlines in the
         // comments, so we need to convert them before processing.
-        var scriptContent = script
+        var scriptContent = scriptBody
 
         BLOCK_COMMENT_PATTERN.toRegex().findAll(scriptContent).forEach { blockMatch ->
             val modifiedBlock = blockMatch.value.replace("\n", NEWLINE_REPLACEMENT)
@@ -139,16 +145,16 @@ object FountainSerializer {
         // Blast the script with regexes.
         // Make sure pattern and template regexes match up!
         val patterns  = arrayOf(UNIVERSAL_LINE_BREAKS_PATTERN, BLOCK_COMMENT_PATTERN,
-        BRACKET_COMMENT_PATTERN, SYNOPSIS_PATTERN, PAGE_BREAK_PATTERN, FALSE_TRANSITION_PATTERN, FORCED_TRANSITION_PATTERN,
-        SCENE_HEADER_PATTERN, FIRST_LINE_ACTION_PATTERN, TRANSITION_PATTERN,
-        CHARACTER_CUE_PATTERN, PARENTHETICAL_PATTERN, DIALOGUE_PATTERN, SECTION_HEADER_PATTERN,
-        ACTION_PATTERN, CLEANUP_PATTERN, NEWLINE_REPLACEMENT)
+                BRACKET_COMMENT_PATTERN, SYNOPSIS_PATTERN, PAGE_BREAK_PATTERN, FALSE_TRANSITION_PATTERN, FORCED_TRANSITION_PATTERN,
+                SCENE_HEADER_PATTERN, FIRST_LINE_ACTION_PATTERN, TRANSITION_PATTERN,
+                CHARACTER_CUE_PATTERN, PARENTHETICAL_PATTERN, DIALOGUE_PATTERN, SECTION_HEADER_PATTERN,
+                ACTION_PATTERN, CLEANUP_PATTERN, NEWLINE_REPLACEMENT)
 
         val templates = arrayOf(UNIVERSAL_LINE_BREAKS_TEMPLATE, BLOCK_COMMENT_TEMPLATE,
-        BRACKET_COMMENT_TEMPLATE, SYNOPSIS_TEMPLATE, PAGE_BREAK_TEMPLATE, FALSE_TRANSITION_TEMPLATE, FORCED_TRANSITION_TEMPLATE,
-        SCENE_HEADER_TEMPLATE, FIRST_LINE_ACTION_TEMPLATE, TRANSITION_TEMPLATE,
-        CHARACTER_CUE_TEMPLATE, PARENTHETICAL_TEMPLATE, DIALOGUE_TEMPLATE, SECTION_HEADER_TEMPLATE,
-        ACTION_TEMPLATE, CLEANUP_TEMPLATE, NEWLINE_RESTORE)
+                BRACKET_COMMENT_TEMPLATE, SYNOPSIS_TEMPLATE, PAGE_BREAK_TEMPLATE, FALSE_TRANSITION_TEMPLATE, FORCED_TRANSITION_TEMPLATE,
+                SCENE_HEADER_TEMPLATE, FIRST_LINE_ACTION_TEMPLATE, TRANSITION_TEMPLATE,
+                CHARACTER_CUE_TEMPLATE, PARENTHETICAL_TEMPLATE, DIALOGUE_TEMPLATE, SECTION_HEADER_TEMPLATE,
+                ACTION_TEMPLATE, CLEANUP_TEMPLATE, NEWLINE_RESTORE)
 
         if (patterns.size != templates.size) {
             throw Exception("The pattern and template arrays don't have the same number of objects!")
@@ -157,8 +163,7 @@ object FountainSerializer {
         for(i in patterns.indices) {
             scriptContent = patterns[i].toRegex().replace(scriptContent, templates[i])
         }
-
-        //println("$$$$$$$ 2nd pass =\n $scriptContent")
+        println("$$$$$$$ 2nd pass =\n $scriptContent")
 
         // 3rd pass - Array construction
         val elementsArray = mutableListOf<FNElement>()
@@ -169,22 +174,9 @@ object FountainSerializer {
             elementsArray.add(FNElement(elementType, elementText))
         }
 
-        println("***** start of 3rd pass =\n $elementsArray")
+        //println("***** start of 3rd pass =\n $elementsArray")
 
         /*
-        NSString *tagMatching   = @"<([a-zA-Z\\s]+)>([^<>]*)<\\/[a-zA-Z\\s]+>";
-        NSArray  *elementText   = [scriptContent componentsMatchedByRegex:tagMatching capture:2];
-        NSArray  *elementType   = [scriptContent componentsMatchedByRegex:tagMatching capture:1];
-        NSInteger max           = [elementText count];
-
-        // Validate the _Text and _Type counts match
-        if ([elementText count] != [elementType count]) {
-            NSLog(@"Text and Type counts don't match.");
-            return nil;
-        }
-
-        NSMutableArray *elementsArray = [NSMutableArray array];
-
         for (NSInteger i = 0; i < max; i++) {
             FNElement *element = [[FNElement alloc] init];
 
@@ -254,7 +246,111 @@ object FountainSerializer {
         }
         return [NSArray arrayWithArray:elementsArray];
          */
+        return elementsArray.toTypedArray()
+    }
 
-        return Script("")
+    fun parseTitlePageOfString(scriptTitle: String) : Array<FNElement> {
+        val elementsArray = mutableListOf<FNElement>()
+
+        /*
+        NSMutableString *rawTitlePage = [NSMutableString stringWithString:[self titlePageOfString:string]];
+        NSMutableArray *contents = [NSMutableArray array];
+
+        // Line by line parsing
+        // split the title page using newlines, then walk through the array and determine what is what
+        // this allows us to look for very specific things and better handle non-uniform title pages
+
+        // split the string
+        NSArray *splitTitlePage = [rawTitlePage componentsSeparatedByString:@"\n"];
+
+        NSString *openDirective = nil;
+        NSMutableArray *directiveData = [NSMutableArray array];
+
+        for (NSString *line in splitTitlePage) {
+            // is this an inline directive or a multi-line one?
+            if ([line isMatchedByRegex:INLINE_DIRECTIVE_PATTERN]) {
+                // if there's an openDirective with data, save it
+                if (openDirective != nil && [directiveData count] > 0) {
+                    [contents addObject:@{openDirective: directiveData}];
+                    directiveData = [NSMutableArray array];
+                }
+                openDirective = nil;
+
+                NSString *key = [[line stringByMatching:INLINE_DIRECTIVE_PATTERN capture:1] lowercaseString];
+                NSString *val = [line stringByMatching:INLINE_DIRECTIVE_PATTERN capture:2];
+
+                // validation
+                if ([key isEqualToString:@"author"] || [key isEqualToString:@"author(s)"]) {
+                    key = @"authors";
+                }
+
+                [contents addObject:@{key: @[val]}];
+            }
+            else if ([line isMatchedByRegex:MULTI_LINE_DIRECTIVE_PATTERN]) {
+                // if there's an openDirective with data, save it
+                if (openDirective != nil && [directiveData count] > 0) {
+                    [contents addObject:@{openDirective: directiveData}];
+                }
+
+                openDirective = [[line stringByMatching:MULTI_LINE_DIRECTIVE_PATTERN capture:1] lowercaseString];
+                directiveData = [NSMutableArray array];
+
+                // validation
+                if ([openDirective isEqualToString:@"author"] || [openDirective isEqualToString:@"author(s)"]) {
+                    openDirective = @"authors";
+                }
+            }
+            else {
+                if ([line stringByMatching:MULTI_LINE_DATA_PATTERN capture:2]) {
+                    [directiveData addObject:[line stringByMatching:MULTI_LINE_DATA_PATTERN capture:2]];
+                }
+            }
+        }
+
+        if (openDirective != nil && [directiveData count] > 0) {
+            [contents addObject:@{openDirective: directiveData}];
+        }
+        return contents;
+         */
+        return elementsArray.toTypedArray()
+    }
+
+    private fun getScriptBody(script: String) : String {
+        var body = script
+        body = body.replace("^\\n+".toRegex(), "")
+
+        // Find title page by looking for the first blank line, then checking the
+        // text above it. If a title page is found we remove it, leaving only the
+        // body content.
+        val firstBlankLine = body.indexOf("\n\n")
+        if(firstBlankLine != -1) {
+            var documentTop = body.substring(0, firstBlankLine+1)
+            documentTop += "\n"
+
+            if (TITLE_PAGE_PATTERN.toRegex().matches(documentTop)) {
+                body = body.substring(firstBlankLine+1)
+            }
+        }
+
+        return "\n\n$body\n\n"
+    }
+
+    private fun getScriptTitlePage(script: String) : String {
+        var body = script
+        body = body.replace("^\\n+".toRegex(), "")
+
+        val firstBlankLine = body.indexOf("\n\n")
+        if(firstBlankLine != -1) {
+            var documentTop = body.substring(0, firstBlankLine+1)
+            documentTop += "\n"
+
+            if (TITLE_PAGE_PATTERN.toRegex().matches(documentTop)) {
+                documentTop = documentTop.replace("^\n+".toRegex(), "")
+                documentTop = documentTop.replace("\n+$".toRegex(), "")
+                return documentTop
+            }
+        }
+
+        return ""
     }
 }
