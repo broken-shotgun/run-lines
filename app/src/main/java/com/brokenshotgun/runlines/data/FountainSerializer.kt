@@ -90,8 +90,8 @@ object FountainSerializer {
 
     /** Data classes */
     data class FNElement(
-            var elementType: String,
-            val elementText: String,
+            var elementType: String = "",
+            var elementText: String = "",
             var isCentered: Boolean = false,
             var sceneNumber: String = "",
             var isDualDialogue: Boolean = false,
@@ -99,12 +99,27 @@ object FountainSerializer {
 
     @JvmStatic
     fun serialize(script: Script): String {
-        //"".matches(BOLD_ITALIC_PATTERN.toRegex())
+        // TODO
         return ""
     }
 
     @JvmStatic
     fun deserialize(script: String): Script {
+        val titleTokens = parseTitlePageOfString(getScriptTitlePage(script))
+        val bodyTokens = parseBodyOfString(getScriptBody(script))
+        val allTokens = titleTokens + bodyTokens
+
+        // for debugging only
+        println("##### all tokens for Script =")
+        for(token in allTokens) {
+            println("<${token.elementType}>${token.elementText}</${token.elementType}>")
+        }
+
+
+        return Script(allTokens)
+    }
+
+    private fun parseBodyOfString(scriptBody: String) : Array<FNElement> {
         // Three-pass parsing method.
         // 1st we check for block comments, and manipulate them for regexes
         // 2nd we run regexes against the file to convert it into a marked up format
@@ -114,13 +129,6 @@ object FountainSerializer {
         // The intermediate marked up format makes subsequent parsing very simple,
         // even if it means less efficiency overall.
 
-        parseTitlePageOfString(getScriptTitlePage(script))
-        parseBodyOfString(getScriptBody(script))
-
-        return Script("")
-    }
-
-    fun parseBodyOfString(scriptBody: String) : Array<FNElement> {
         // 1st pass - Block comments
         // The regexes aren't smart enough (yet) to deal with newlines in the
         // comments, so we need to convert them before processing.
@@ -163,44 +171,40 @@ object FountainSerializer {
         for(i in patterns.indices) {
             scriptContent = patterns[i].toRegex().replace(scriptContent, templates[i])
         }
-        println("$$$$$$$ 2nd pass =\n $scriptContent")
 
         // 3rd pass - Array construction
         val elementsArray = mutableListOf<FNElement>()
         val tagMatching = "<([a-zA-Z\\s]+)>([^<>]*)</[a-zA-Z\\s]+>"
-        tagMatching.toRegex().findAll(scriptContent).forEach { element ->
-            val elementText = element.groupValues[2]
-            val elementType = element.groupValues[1]
-            elementsArray.add(FNElement(elementType, elementText))
-        }
-
-        //println("***** start of 3rd pass =\n $elementsArray")
-
-        /*
-        for (NSInteger i = 0; i < max; i++) {
-            FNElement *element = [[FNElement alloc] init];
+        tagMatching.toRegex().findAll(scriptContent).forEach { tag ->
+            val element = FNElement()
+            val elementType = tag.groupValues[1]
+            val elementText = tag.groupValues[2]
 
             // Convert < and > back to normal
-            NSMutableString *cleanedText = [NSMutableString stringWithString:elementText[i]];
-            [cleanedText replaceOccurrencesOfString:@"&lt;" withString:@"<" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [cleanedText length])];
-            [cleanedText replaceOccurrencesOfString:@"&gt;" withString:@">" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [cleanedText length])];
-            [cleanedText replaceOccurrencesOfString:@"::trip::" withString:@"..." options:NSCaseInsensitiveSearch range:NSMakeRange(0, [cleanedText length])];
+            var cleanedText = elementText
+            cleanedText = cleanedText.replace("&lt;", "<", true)
+            cleanedText = cleanedText.replace("&gt;", ">", true)
+            cleanedText = cleanedText.replace("::trip::", "...", true)
 
             // Deal with scene numbers if we are in a scene heading
-            NSString *sceneNumber = nil;
-            NSString *fullSceneNumberText = nil;
-            if ([elementType[i] isEqualToString:@"Scene Heading"]) {
-                sceneNumber = [cleanedText stringByMatching:SCENE_NUMBER_PATTERN options:RKLCaseless inRange:NSMakeRange(0, [cleanedText length]) capture:2 error:nil];
-                fullSceneNumberText = [cleanedText stringByMatching:SCENE_NUMBER_PATTERN options:RKLCaseless inRange:NSMakeRange(0, [cleanedText length]) capture:1 error:nil];
-                if (sceneNumber) {
-                    element.sceneNumber = sceneNumber;
-                    [cleanedText replaceOccurrencesOfString:fullSceneNumberText withString:@"" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [cleanedText length])];
+            if (elementType == "Scene Heading") {
+                val sceneNumberMatch = SCENE_HEADER_PATTERN.toRegex(RegexOption.IGNORE_CASE).find(cleanedText)
+                if (sceneNumberMatch != null) {
+                    val fullSceneNumberText = sceneNumberMatch.groupValues[1]
+                    val sceneNumber = sceneNumberMatch.groupValues[2]
+                    element.sceneNumber = sceneNumber
+                    cleanedText = cleanedText.replace(fullSceneNumberText, "", true)
                 }
             }
 
-            element.elementType     = elementType[i];
-            element.elementText     = [cleanedText stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
+            element.elementType = elementType
+            element.elementText = cleanedText.trim()
 
+            elementsArray.add(element)
+        }
+
+        /*
+        for (NSInteger i = 0; i < max; i++) {
 
             // More refined processing of elements based on text/type
             if ([element.elementText isMatchedByRegex:CENTERED_TEXT_PATTERN]) {
@@ -249,7 +253,7 @@ object FountainSerializer {
         return elementsArray.toTypedArray()
     }
 
-    fun parseTitlePageOfString(scriptTitle: String) : Array<FNElement> {
+    private fun parseTitlePageOfString(scriptTitle: String) : Array<FNElement> {
         val elementsArray = mutableListOf<FNElement>()
 
         /*

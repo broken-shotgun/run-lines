@@ -21,6 +21,10 @@ import android.os.Parcelable;
 
 import androidx.annotation.NonNull;
 
+import com.brokenshotgun.runlines.data.FountainSerializer;
+
+import org.jetbrains.annotations.NotNull;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -53,6 +57,15 @@ public class Script implements Parcelable {
         this.allVoices = new ArrayList<>(copy.allVoices);
         this.actorVoices = new HashMap<>(copy.actorVoices);
         this.id = copy.id;
+    }
+
+    public Script(@NotNull FountainSerializer.FNElement[] allTokens) {
+        actors = new ArrayList<>();
+        scenes = new ArrayList<>();
+        allVoices = new ArrayList<>();
+        actorVoices = new HashMap<>();
+
+        // TODO parse tokens to Script model
     }
 
     public void copy(Script copy) {
