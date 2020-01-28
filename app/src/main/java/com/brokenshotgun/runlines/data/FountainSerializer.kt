@@ -115,7 +115,7 @@ object FountainSerializer {
             println("<${token.elementType}>${token.elementText}</${token.elementType}>")
         }
 
-        return Script(bodyTokens)
+        return Script(titleTokens, bodyTokens)
     }
 
     private fun parseBodyOfString(scriptBody: String) : Array<FNElement> {

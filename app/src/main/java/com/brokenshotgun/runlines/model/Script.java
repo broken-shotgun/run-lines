@@ -20,6 +20,7 @@ import android.os.Parcel;
 import android.os.Parcelable;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.brokenshotgun.runlines.data.FountainSerializer;
 
@@ -29,9 +30,15 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Script implements Parcelable {
     private String name;
+    private String credit;
+    private String author;
+    private String source;
+    private String draftDate;
+    private String contact;
     private final List<Actor> actors;
     private final List<Scene> scenes;
     private final List<String> allVoices;
@@ -52,6 +59,11 @@ public class Script implements Parcelable {
 
     public Script(Script copy) {
         this.name = copy.name;
+        this.credit = copy.credit;
+        this.author = copy.author;
+        this.source = copy.source;
+        this.draftDate = copy.draftDate;
+        this.contact = copy.contact;
         this.actors = new ArrayList<>(copy.actors);
         this.scenes = new ArrayList<>(copy.scenes);
         this.allVoices = new ArrayList<>(copy.allVoices);
@@ -59,13 +71,56 @@ public class Script implements Parcelable {
         this.id = copy.id;
     }
 
-    public Script(@NotNull FountainSerializer.FNElement[] allTokens) {
+    public Script(@NotNull Map<String, ? extends List<String>> titleTokens, @NotNull FountainSerializer.FNElement[] bodyTokens) {
         actors = new ArrayList<>();
         scenes = new ArrayList<>();
         allVoices = new ArrayList<>();
         actorVoices = new HashMap<>();
 
         // TODO parse tokens to Script model
+        parseTitleTokens(titleTokens);
+        parseBodyTokens(bodyTokens);
+    }
+
+    private void parseTitleTokens(@NotNull Map<String, ? extends List<String>> titleTokens) {
+        if (titleTokens.containsKey("title")) {
+            name = listToString(titleTokens.get("title"));
+        }
+
+        if (titleTokens.containsKey("credit")) {
+            credit = listToString(titleTokens.get("credit"));
+        }
+
+        if (titleTokens.containsKey("authors")) {
+            author = listToString(titleTokens.get("authors"));
+        }
+
+        if (titleTokens.containsKey("source")) {
+            source = listToString(titleTokens.get("source"));
+        }
+
+        if (titleTokens.containsKey("draft date")) {
+            draftDate = listToString(titleTokens.get("draft date"));
+        }
+
+        if (titleTokens.containsKey("contact")) {
+            contact = listToString(titleTokens.get("contact"));
+        }
+    }
+
+    private String listToString(@Nullable List<String> value) {
+        if (value == null) {
+            return "";
+        }
+        StringBuilder result = new StringBuilder();
+        for(String str : value) {
+            result.append(str).append(" ");
+        }
+        return result.toString().trim();
+    }
+
+    private void parseBodyTokens(@NotNull FountainSerializer.FNElement[] bodyTokens) {
+
     }
 
     public void copy(Script copy) {
@@ -89,6 +144,26 @@ public class Script implements Parcelable {
         return name;
     }
 
+    public String getCredit() {
+        return credit;
+    }
+
+    public String getAuthor() {
+        return author;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public String getDraftDate() {
+        return draftDate;
+    }
+
+    public String getContact() {
+        return contact;
+    }
+
     public List<Actor> getActors() {
         return actors;
     }
@@ -103,6 +178,26 @@ public class Script implements Parcelable {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public void setCredit(String credit) {
+        this.credit = credit;
+    }
+
+    public void setAuthor(String author) {
+        this.author = author;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
+    }
+
+    public void setDraftDate(String draftDate) {
+        this.draftDate = draftDate;
+    }
+
+    public void setContact(String contact) {
+        this.contact = contact;
     }
 
     public void removeActor(Actor actor) {
@@ -143,6 +238,11 @@ public class Script implements Parcelable {
     public String toString() {
         return "Script{" +
                 "name='" + name + '\'' +
+                ", credit='" + credit + '\'' +
+                ", author='" + author + '\'' +
+                ", source='" + source + '\'' +
+                ", draftDate='" + draftDate + '\'' +
+                ", contact='" + contact + '\'' +
                 ", actors=" + actors +
                 ", scenes=" + scenes +
                 ", allVoices=" + allVoices +
@@ -160,6 +260,11 @@ public class Script implements Parcelable {
     @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeString(this.name);
+        dest.writeString(this.credit);
+        dest.writeString(this.author);
+        dest.writeString(this.source);
+        dest.writeString(this.draftDate);
+        dest.writeString(this.contact);
         dest.writeTypedList(this.actors);
         dest.writeTypedList(this.scenes);
         dest.writeStringList(this.allVoices);
@@ -167,8 +272,14 @@ public class Script implements Parcelable {
         dest.writeLong(this.id);
     }
 
+    @SuppressWarnings("unchecked")
     protected Script(Parcel in) {
         name = in.readString();
+        credit = in.readString();
+        author = in.readString();
+        source = in.readString();
+        draftDate = in.readString();
+        contact = in.readString();
         ArrayList<Actor> tmpActors = in.createTypedArrayList(Actor.CREATOR);
         actors = (tmpActors != null) ? new ArrayList<>(tmpActors) : new ArrayList<Actor>();
         ArrayList<Scene> tmpScenes = in.createTypedArrayList(Scene.CREATOR);
