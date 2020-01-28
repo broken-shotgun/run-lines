@@ -4,68 +4,68 @@ import com.brokenshotgun.runlines.model.Script
 import java.util.*
 
 object FountainSerializer {
-    const val UNIVERSAL_LINE_BREAKS_PATTERN  = "\\r\\n|\\r|\\n"
-    const val UNIVERSAL_LINE_BREAKS_TEMPLATE = "\n"
+    private const val UNIVERSAL_LINE_BREAKS_PATTERN  = "\\r\\n|\\r|\\n"
+    private const val UNIVERSAL_LINE_BREAKS_TEMPLATE = "\n"
 
     /** Patterns */
 
-    const val SCENE_HEADER_PATTERN       = "(?<=\\n)(([iI][nN][tT]|[eE][xX][tT]|[^\\w][eE][sS][tT]|\\.|[iI]\\.?\\/[eE]\\.?)([^\\n]+))\\n"
-    const val ACTION_PATTERN             = "([^<>]*?)(\\n{2}|\\n<)"
+    private const val SCENE_HEADER_PATTERN       = "(?<=\\n)(([iI][nN][tT]|[eE][xX][tT]|[^\\w][eE][sS][tT]|\\.|[iI]\\.?/[eE]\\.?)([^\\n]+))\\n"
+    private const val ACTION_PATTERN             = "([^<>]*?)(\\n{2}|\\n<)"
     const val MULTI_LINE_ACTION_PATTERN  = "\n{2}(([^a-z\\n:]+?[\\.\\?,\\s!\\*_]*?)\n{2}){1,2}"
-    const val CHARACTER_CUE_PATTERN      = "(?<=\\n)([ \\t]*[^<>a-z\\s\\/\\n][^<>a-z:!\\?\\n]*[^<>a-z\\(!\\?:,\\n\\.][ \\t]?)\\n{1}(?!\\n)"
-    const val DIALOGUE_PATTERN           = "(<(Character|Parenthetical)>[^<>\\n]+<\\/(Character|Parenthetical)>)([^<>]*?)(?=\\n{2}|\\n{1}<Parenthetical>)"
-    const val PARENTHETICAL_PATTERN      = "(\\([^<>]*?\\)[\\s]?)\n"
-    const val TRANSITION_PATTERN         = "\\n([\\*_]*([^<>\\na-z]*TO:|FADE TO BLACK\\.|FADE OUT\\.|CUT TO BLACK\\.)[\\*_]*)\\n"
-    const val FORCED_TRANSITION_PATTERN  = "\\n((&gt;|>)\\s*[^<>\\n]+)\\n"     // need to look for &gt; pattern because we run this regex against marked up content
-    const val FALSE_TRANSITION_PATTERN   = "\\n((&gt;|>)\\s*[^<>\\n]+(&lt;\\s*))\\n"     // need to look for &gt; pattern because we run this regex against marked up content
-    const val PAGE_BREAK_PATTERN         = "(?<=\\n)(\\s*[\\=\\-\\_]{3,8}\\s*)\\n{1}"
-    const val CLEANUP_PATTERN            = "<Action>\\s*<\\/Action>"
-    const val FIRST_LINE_ACTION_PATTERN  = "^\\n\\n([^<>\\n#]*?)\\n"
+    private const val CHARACTER_CUE_PATTERN      = "(?<=\\n)([ \\t]*[^<>a-z\\s\\/\\n][^<>a-z:!\\?\\n]*[^<>a-z\\(!\\?:,\\n\\.][ \\t]?)\\n{1}(?!\\n)"
+    private const val DIALOGUE_PATTERN           = "(<(Character|Parenthetical)>[^<>\\n]+<\\/(Character|Parenthetical)>)([^<>]*?)(?=\\n{2}|\\n{1}<Parenthetical>)"
+    private const val PARENTHETICAL_PATTERN      = "(\\([^<>]*?\\)[\\s]?)\n"
+    private const val TRANSITION_PATTERN         = "\\n([\\*_]*([^<>\\na-z]*TO:|FADE TO BLACK\\.|FADE OUT\\.|CUT TO BLACK\\.)[\\*_]*)\\n"
+    private const val FORCED_TRANSITION_PATTERN  = "\\n((&gt;|>)\\s*[^<>\\n]+)\\n"     // need to look for &gt; pattern because we run this regex against marked up content
+    private const val FALSE_TRANSITION_PATTERN   = "\\n((&gt;|>)\\s*[^<>\\n]+(&lt;\\s*))\\n"     // need to look for &gt; pattern because we run this regex against marked up content
+    private const val PAGE_BREAK_PATTERN         = "(?<=\\n)(\\s*[\\=\\-\\_]{3,8}\\s*)\\n{1}"
+    private const val CLEANUP_PATTERN            = "<Action>\\s*<\\/Action>"
+    private const val FIRST_LINE_ACTION_PATTERN  = "^\\n\\n([^<>\\n#]*?)\\n"
     const val SCENE_NUMBER_PATTERN       = "(\\#([0-9A-Za-z\\.\\)-]+)\\#)"
-    const val SECTION_HEADER_PATTERN     = "((#+)(\\s*[^\\n]*))\\n?"
+    private const val SECTION_HEADER_PATTERN     = "((#+)(\\s*[^\\n]*))\\n?"
 
     /** Templates */
 
-    const val SCENE_HEADER_TEMPLATE      = "\n<Scene Heading>$1</Scene Heading>"
-    const val ACTION_TEMPLATE            = "<Action>$1</Action>$2"
+    private const val SCENE_HEADER_TEMPLATE      = "\n<Scene Heading>$1</Scene Heading>"
+    private const val ACTION_TEMPLATE            = "<Action>$1</Action>$2"
     const val MULTI_LINE_ACTION_TEMPLATE = "\n<Action>$2</Action>"
-    const val CHARACTER_CUE_TEMPLATE     = "<Character>$1</Character>"
-    const val DIALOGUE_TEMPLATE          = "$1<Dialogue>$4</Dialogue>"
-    const val PARENTHETICAL_TEMPLATE     = "<Parenthetical>$1</Parenthetical>"
-    const val TRANSITION_TEMPLATE        = "\n<Transition>$1</Transition>"
-    const val FORCED_TRANSITION_TEMPLATE = "\n<Transition>$1</Transition>"
-    const val FALSE_TRANSITION_TEMPLATE  = "\n<Action>$1</Action>"
-    const val PAGE_BREAK_TEMPLATE        = "\n<Page Break></Page Break>\n"
-    const val CLEANUP_TEMPLATE           = ""
-    const val FIRST_LINE_ACTION_TEMPLATE = "<Action>$1</Action>\n"
-    const val SECTION_HEADER_TEMPLATE    = "<Section Heading>$1</Section Heading>"
+    private const val CHARACTER_CUE_TEMPLATE     = "<Character>$1</Character>"
+    private const val DIALOGUE_TEMPLATE          = "$1<Dialogue>$4</Dialogue>"
+    private const val PARENTHETICAL_TEMPLATE     = "<Parenthetical>$1</Parenthetical>"
+    private const val TRANSITION_TEMPLATE        = "\n<Transition>$1</Transition>"
+    private const val FORCED_TRANSITION_TEMPLATE = "\n<Transition>$1</Transition>"
+    private const val FALSE_TRANSITION_TEMPLATE  = "\n<Action>$1</Action>"
+    private const val PAGE_BREAK_TEMPLATE        = "\n<Page Break></Page Break>\n"
+    private const val CLEANUP_TEMPLATE           = ""
+    private const val FIRST_LINE_ACTION_TEMPLATE = "<Action>$1</Action>\n"
+    private const val SECTION_HEADER_TEMPLATE    = "<Section Heading>$1</Section Heading>"
 
     /** Block Comments */
 
-    const val BLOCK_COMMENT_PATTERN      = "\\n/\\*([^<>]+?)\\*/\\n"
-    const val BRACKET_COMMENT_PATTERN    = "\\n\\[{2}([^<>]+?)]{2}\\n"
-    const val SYNOPSIS_PATTERN           = "\\n={1}([^<>=][^<>]+?)\\n"     // we need to make sure we don't catch ==== as a synopsis
+    private const val BLOCK_COMMENT_PATTERN      = "\\n/\\*([^<>]+?)\\*/\\n"
+    private const val BRACKET_COMMENT_PATTERN    = "\\n\\[{2}([^<>]+?)]{2}\\n"
+    private const val SYNOPSIS_PATTERN           = "\\n={1}([^<>=][^<>]+?)\\n"     // we need to make sure we don't catch ==== as a synopsis
 
-    const val BLOCK_COMMENT_TEMPLATE     = "\n<Boneyard>$1</Boneyard>\n"
-    const val BRACKET_COMMENT_TEMPLATE   = "\n<Comment>$1</Comment>\n"
-    const val SYNOPSIS_TEMPLATE          = "\n<Synopsis>$1</Synopsis>\n"
+    private const val BLOCK_COMMENT_TEMPLATE     = "\n<Boneyard>$1</Boneyard>\n"
+    private const val BRACKET_COMMENT_TEMPLATE   = "\n<Comment>$1</Comment>\n"
+    private const val SYNOPSIS_TEMPLATE          = "\n<Synopsis>$1</Synopsis>\n"
 
-    const val NEWLINE_REPLACEMENT        = "@@@@@"
-    const val NEWLINE_RESTORE            = "\n"
+    private const val NEWLINE_REPLACEMENT        = "@@@@@"
+    private const val NEWLINE_RESTORE            = "\n"
 
 
     /** Title Page */
 
-    const val TITLE_PAGE_PATTERN             = "^([^\\n]+:(([ \\t]*|\\n)[^\\n]+\\n)+)+\\n"
-    const val INLINE_DIRECTIVE_PATTERN       = "^([\\w\\s&]+):\\s*([^\\s][\\w&,\\.\\?!:\\(\\)\\/\\s-©\\*\\_]+)$"
-    const val MULTI_LINE_DIRECTIVE_PATTERN   = "^([\\w\\s&]+):\\s*$"
-    const val MULTI_LINE_DATA_PATTERN        = "^([ ]{2,8}|\\t)([^<>]+)$"
+    private const val TITLE_PAGE_PATTERN             = "^([^\\n]+:(([ \\t]*|\\n)[^\\n]+\\n)+)+\\n"
+    private const val INLINE_DIRECTIVE_PATTERN       = "^([\\w\\s&]+):\\s*([^\\s][\\w&,.?!:()/\\s-©*_]+)$"
+    private const val MULTI_LINE_DIRECTIVE_PATTERN   = "^([\\w\\s&]+):\\s*$"
+    private const val MULTI_LINE_DATA_PATTERN        = "^([ ]{2,8}|\\t)([^<>]+)$"
 
 
     /** Misc */
 
-    const val DUAL_DIALOGUE_PATTERN          = "\\^\\s*$"
-    const val CENTERED_TEXT_PATTERN          = "^>[^<>\\n]+<"
+    private const val DUAL_DIALOGUE_PATTERN          = "\\^\\s*$"
+    private const val CENTERED_TEXT_PATTERN          = "^>[^<>\\n]+<"
 
 
     /** Styling for FDX */
@@ -112,7 +112,11 @@ object FountainSerializer {
         println("##### all tokens for Script #####")
         println(titleTokens)
         for(token in bodyTokens) {
-            println("<${token.elementType}>${token.elementText}</${token.elementType}>")
+            println("[isCentered=${token.isCentered}, " +
+                    "sceneNumber=${token.sceneNumber}, " +
+                    "isDualDialogue=${token.isDualDialogue}, " +
+                    "sectionDepth=${token.sectionDepth}]\t" +
+                    "<${token.elementType}>${token.elementText}</${token.elementType}>")
         }
 
         return Script(titleTokens, bodyTokens)
@@ -172,6 +176,7 @@ object FountainSerializer {
         }
 
         // 3rd pass - Array construction
+        var i = 0
         val elementsArray = mutableListOf<FNElement>()
         val tagMatching = "<([a-zA-Z\\s]+)>([^<>]*)</[a-zA-Z\\s]+>"
         tagMatching.toRegex().findAll(scriptContent).forEach { tag ->
@@ -199,56 +204,59 @@ object FountainSerializer {
             element.elementType = elementType
             element.elementText = cleanedText.trim()
 
-            elementsArray.add(element)
-        }
-
-        /*
-        for (NSInteger i = 0; i < max; i++) {
-
             // More refined processing of elements based on text/type
-            if ([element.elementText isMatchedByRegex:CENTERED_TEXT_PATTERN]) {
-                element.isCentered = YES;
-                element.elementText = [[element.elementText stringByMatching:@"(>?)\\s*([^<>\\n]*)\\s*(<?)" capture:2] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+            val centeredTextMatch = CENTERED_TEXT_PATTERN.toRegex().find(element.elementText)
+            if (centeredTextMatch != null) {
+                element.isCentered = true
+                val match = "(>?)\\s*([^<>\\n]*)\\s*(<?)".toRegex().find(element.elementText)
+                if (match != null) {
+                    element.elementText = match.groupValues[2].trim()
+                }
             }
 
-            if ([element.elementType isEqualToString:@"Scene Heading"]) {
+            if (element.elementType == "Scene Heading") {
                 // Check for a forced scene heading. Remove preceding dot.
-                element.elementText = [element.elementText stringByMatching:@"^\\.?(.+)" capture:1];
+                val forcedSceneHeadingMatch = "^\\.?(.+)".toRegex().find(element.elementText)
+                if (forcedSceneHeadingMatch != null) {
+                    element.elementText = forcedSceneHeadingMatch.groupValues[1]
+                }
             }
 
-            if ([element.elementType isEqualToString:@"Section Heading"]) {
+            if (element.elementType == "Section Heading") {
                 // Clean the section text, and get the section depth
-                NSString *depthChars = [element.elementText stringByMatching:SECTION_HEADER_PATTERN capture:2];
-                NSUInteger depth = [depthChars length];
-                element.sectionDepth = depth;
-                element.elementText = [element.elementText stringByMatching:SECTION_HEADER_PATTERN capture:3];
+                val sectionHeaderMatch = SECTION_HEADER_PATTERN.toRegex().find(element.elementText)
+                if (sectionHeaderMatch != null) {
+                    val depthChars = sectionHeaderMatch.groupValues[2]
+                    val depth = depthChars.length
+                    element.sectionDepth = depth
+                    element.elementText = sectionHeaderMatch.groupValues[3].trim()
+                }
             }
 
-            if (i > 1 && [element.elementType isEqualToString:@"Character"] && [element.elementText isMatchedByRegex:DUAL_DIALOGUE_PATTERN]) {
-                element.isDualDialogue = YES;
+            if (i > 1 && element.elementType == "Character" && DUAL_DIALOGUE_PATTERN.toRegex().containsMatchIn(element.elementText)) {
+                element.isDualDialogue = true
 
                 // clean the ^ mark
-                element.elementText = [element.elementText stringByReplacingOccurrencesOfRegex:@"\\s*\\^$" withString:@""];
+                element.elementText = element.elementText.replace("\\s*\\^$".toRegex(), "")
 
-                // find the previous character cue
-                NSInteger j = i - 1;
+                var j = i - 1
 
-                FNElement *previousElement;
-                NSSet *dialogueBlockTypes   = [NSSet setWithObjects:@"Dialogue", @"Parenthetical", nil];
+                var previousElement: FNElement?
+                val dialogueBlockTypes = setOf("Dialogue", "Parenthetical")
                 do {
-                    previousElement = elementsArray[j];
-                    if ([previousElement.elementType isEqualToString:@"Character"]) {
-                        previousElement.isDualDialogue = YES;
-                        previousElement.elementText = [previousElement.elementText stringByReplacingOccurrencesOfString:@"^" withString:@""];
+                    previousElement = elementsArray[j]
+                    if (previousElement.elementType == "Character") {
+                        previousElement.isDualDialogue = true
+                        previousElement.elementText = previousElement.elementText.replace("^", "")
                     }
-                    j--;
-                } while (j >= 0 && [dialogueBlockTypes containsObject:previousElement.elementType]);
+                    j--
+                } while (j >= 0 && dialogueBlockTypes.contains(previousElement!!.elementType))
             }
 
-            [elementsArray addObject:element];
+            elementsArray.add(element)
+            i++
         }
-        return [NSArray arrayWithArray:elementsArray];
-         */
+
         return elementsArray.toTypedArray()
     }
 

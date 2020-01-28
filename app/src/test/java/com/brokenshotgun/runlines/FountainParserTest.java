@@ -109,6 +109,26 @@ public class FountainParserTest {
     }
 
     @Test
+    public void testDeserializeMediumScript() throws Exception {
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+
+        String birthdayString = convertTextResToString("TheLastBirthdayCard.fountain.txt");
+        Script birthdayScript = FountainSerializer.deserialize(birthdayString);
+        assertNotNull(birthdayScript);
+        System.out.println("testDeserializeMediumScript> SCRIPT JSON=\n" + gson.toJson(birthdayScript));
+    }
+
+    @Test
+    public void testDeserializeLongScript() throws Exception {
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+
+        String bigFishString = convertTextResToString("bigfish.fountain.txt");
+        Script bigFishScript = FountainSerializer.deserialize(bigFishString);
+        assertNotNull(bigFishScript);
+        System.out.println("testDeserializeLongScript> SCRIPT JSON=\n" + gson.toJson(bigFishScript));
+    }
+
+    @Test
     public void testSerializeScript() {
         Script script = new Script("Fountain Format Test Script");
         Actor actor = new Actor("JASON");
