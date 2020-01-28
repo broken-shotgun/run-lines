@@ -78,8 +78,8 @@ public class Line implements Parcelable {
     private transient String lineHtml;
 
     private transient static final Pattern UNDERSCORE_PATTERN = Pattern.compile("_([^_]+)_");           //_underscores_
-    private transient static final Pattern ITALICIZE_PATTERN = Pattern.compile("\\*([^\\*]+)\\*");      //*italicize*
-    private transient static final Pattern BOLD_PATTERN = Pattern.compile("\\*\\*([^\\*\\*]+)\\*\\*");  //**bold**
+    private transient static final Pattern ITALICIZE_PATTERN = Pattern.compile("\\*([^*]+)\\*");      //*italicize*
+    private transient static final Pattern BOLD_PATTERN = Pattern.compile("\\*\\*([^*{2}]+)\\*\\*");  //**bold**
 
     public String getLineHtml() {
         if (lineHtml == null) {

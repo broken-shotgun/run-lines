@@ -22,7 +22,7 @@ import android.os.Parcelable;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.brokenshotgun.runlines.data.FountainSerializer;
+import com.brokenshotgun.runlines.data.FNElement;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -71,7 +71,7 @@ public class Script implements Parcelable {
         this.id = copy.id;
     }
 
-    public Script(@NotNull Map<String, ? extends List<String>> titleTokens, @NotNull FountainSerializer.FNElement[] bodyTokens) {
+    public Script(@NotNull Map<String, ? extends List<String>> titleTokens, @NotNull FNElement[] bodyTokens) {
         actors = new ArrayList<>();
         scenes = new ArrayList<>();
         allVoices = new ArrayList<>();
@@ -119,8 +119,35 @@ public class Script implements Parcelable {
         return result.toString().trim();
     }
 
-    private void parseBodyTokens(@NotNull FountainSerializer.FNElement[] bodyTokens) {
-
+    private void parseBodyTokens(@NotNull FNElement[] bodyTokens) {
+        for(FNElement element : bodyTokens) {
+            switch (element.getElementType()) {
+                case "Scene Heading":
+                    // TODO handle scenes
+                    break;
+                case "Section Heading":
+                    // TODO handle section
+                    break;
+                case "Synopsis":
+                    // TODO handle synopsis
+                    break;
+                case "Action":
+                    // TODO handle action
+                    break;
+                case "Character":
+                    // TODO handle character
+                    break;
+                case "Dialogue":
+                    // TODO handle dialogue
+                    break;
+                case "Parenthetical":
+                    // TODO handle parenthetical
+                    break;
+                case "Transition":
+                    // TODO handle transition
+                    break;
+            }
+        }
     }
 
     public void copy(Script copy) {

@@ -3,6 +3,15 @@ package com.brokenshotgun.runlines.data
 import com.brokenshotgun.runlines.model.Script
 import java.util.*
 
+/** Data classes */
+data class FNElement(
+        var elementType: String = "",
+        var elementText: String = "",
+        var isCentered: Boolean = false,
+        var sceneNumber: String = "",
+        var isDualDialogue: Boolean = false,
+        var sectionDepth: Int = 0)
+
 object FountainSerializer {
     private const val UNIVERSAL_LINE_BREAKS_PATTERN  = "\\r\\n|\\r|\\n"
     private const val UNIVERSAL_LINE_BREAKS_TEMPLATE = "\n"
@@ -87,15 +96,6 @@ object FountainSerializer {
     const val BOLD_TEMPLATE                  = "Bold"
     const val ITALIC_TEMPLATE                = "Italic"
     const val UNDERLINE_TEMPLATE             = "Underline"
-
-    /** Data classes */
-    data class FNElement(
-            var elementType: String = "",
-            var elementText: String = "",
-            var isCentered: Boolean = false,
-            var sceneNumber: String = "",
-            var isDualDialogue: Boolean = false,
-            var sectionDepth: Int = 0)
 
     @JvmStatic
     fun serialize(script: Script): String {

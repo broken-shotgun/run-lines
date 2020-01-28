@@ -19,6 +19,8 @@ package com.brokenshotgun.runlines.model;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import androidx.annotation.NonNull;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -65,6 +67,7 @@ public class Scene implements Parcelable {
         lines.add(new Line(Actor.ACTION, action));
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "Scene{" +
