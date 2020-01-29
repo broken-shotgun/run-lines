@@ -55,20 +55,8 @@ public class Script implements Parcelable {
         actorVoices = new HashMap<>();
 
         actors.add(Actor.ACTION);
-    }
-
-    public Script(Script copy) {
-        this.name = copy.name;
-        this.credit = copy.credit;
-        this.author = copy.author;
-        this.source = copy.source;
-        this.draftDate = copy.draftDate;
-        this.contact = copy.contact;
-        this.actors = new ArrayList<>(copy.actors);
-        this.scenes = new ArrayList<>(copy.scenes);
-        this.allVoices = new ArrayList<>(copy.allVoices);
-        this.actorVoices = new HashMap<>(copy.actorVoices);
-        this.id = copy.id;
+        actors.add(Actor.SECTION);
+        actors.add(Actor.SYNOPSIS);
     }
 
     public Script(@NotNull Map<String, ? extends List<String>> titleTokens, @NotNull FNElement[] bodyTokens) {
@@ -76,6 +64,10 @@ public class Script implements Parcelable {
         scenes = new ArrayList<>();
         allVoices = new ArrayList<>();
         actorVoices = new HashMap<>();
+
+        actors.add(Actor.ACTION);
+        actors.add(Actor.SECTION);
+        actors.add(Actor.SYNOPSIS);
 
         parseTitleTokens(titleTokens);
         parseBodyTokens(bodyTokens);
@@ -112,7 +104,7 @@ public class Script implements Parcelable {
             return "";
         }
         StringBuilder result = new StringBuilder();
-        for(String str : value) {
+        for (String str : value) {
             result.append(str).append(" ");
         }
         return result.toString().trim();
@@ -123,22 +115,23 @@ public class Script implements Parcelable {
         Map<String, Actor> actorMap = new HashMap<>();
         Actor currentActor = null;
         Line currentLine = null;
-        for(FNElement element : bodyTokens) {
+        for (FNElement element : bodyTokens) {
             switch (element.getElementType()) {
                 case "Scene Heading":
                     if (currentScene.getName() == null) {
                         currentScene = new Scene(element.getElementText());
-                    }
-                    else {
+                    } else {
                         Scene previousScene = currentScene;
                         scenes.add(previousScene);
                         currentScene = new Scene(element.getElementText());
                     }
                     break;
                 case "Section Heading":
-                    // TODO handle section (ignore, preserve in scene object?  or treat as action?)
+                    currentScene.addSection(element.getElementText());
+                    break;
                 case "Synopsis":
-                    // TODO handle synopsis (ignore, preserve in scene object? or treat as action?)
+                    currentScene.addSynopsis(element.getElementText());
+                    break;
                 case "Transition":
                 case "Action":
                     currentScene.addAction(element.getElementText());
@@ -158,8 +151,7 @@ public class Script implements Parcelable {
                     if (currentLine == null) {
                         currentLine = new Line(currentActor, element.getElementText());
                         currentScene.addLine(currentLine);
-                    }
-                    else {
+                    } else {
                         currentLine.addDialogue(element.getElementText());
                     }
                     break;
@@ -167,8 +159,27 @@ public class Script implements Parcelable {
         }
     }
 
+    public Script(Script copy) {
+        this.name = copy.name;
+        this.credit = copy.credit;
+        this.author = copy.author;
+        this.source = copy.source;
+        this.draftDate = copy.draftDate;
+        this.contact = copy.contact;
+        this.actors = new ArrayList<>(copy.actors);
+        this.scenes = new ArrayList<>(copy.scenes);
+        this.allVoices = new ArrayList<>(copy.allVoices);
+        this.actorVoices = new HashMap<>(copy.actorVoices);
+        this.id = copy.id;
+    }
+
     public void copy(Script copy) {
         this.name = copy.name;
+        this.credit = copy.credit;
+        this.author = copy.author;
+        this.source = copy.source;
+        this.draftDate = copy.draftDate;
+        this.contact = copy.contact;
         this.actors.clear();
         this.actors.addAll(copy.actors);
         this.scenes.clear();

@@ -25,7 +25,11 @@ public class Actor implements Parcelable {
     private String name;
 
     public static final String ACTION_NAME = "ACTION";
+    public static final String SECTION_NAME = "SECTION";
+    public static final String SYNOPSIS_NAME = "SYNOPSIS";
     public static final Actor ACTION = new Actor(ACTION_NAME);
+    public static final Actor SECTION = new Actor(SECTION_NAME);
+    public static final Actor SYNOPSIS = new Actor(SYNOPSIS_NAME);
 
     public Actor(String name) {
         this.name = name;

@@ -19,6 +19,7 @@ package com.brokenshotgun.runlines.adapters;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
+import android.media.audiofx.AcousticEchoCanceler;
 import android.text.Html;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -63,7 +64,17 @@ public class LineArrayAdapter extends ArrayAdapter<Line> {
         boolean enabled = false;
         if (line != null) {
             String name = line.getActor().getName();
-            viewHolder.nameText.setVisibility(name.equals(Actor.ACTION_NAME) ? View.INVISIBLE : View.VISIBLE);
+            switch (name) {
+                case Actor.ACTION_NAME:
+                case Actor.SECTION_NAME:
+                case Actor.SYNOPSIS_NAME:
+                    viewHolder.nameText.setVisibility(View.GONE);
+                    break;
+                default:
+                    viewHolder.nameText.setVisibility(View.VISIBLE);
+                    break;
+            }
+
             viewHolder.nameText.setText(name);
             viewHolder.lineText.setText(Html.fromHtml(line.getLineHtml()));
             enabled = line.enabled;
