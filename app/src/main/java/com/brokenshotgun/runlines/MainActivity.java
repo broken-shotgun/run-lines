@@ -41,7 +41,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
 import com.brokenshotgun.runlines.adapters.ScriptArrayAdapter;
-import com.brokenshotgun.runlines.data.FountainParser;
+import com.brokenshotgun.runlines.data.FountainSerializer;
 import com.brokenshotgun.runlines.data.PdfParser;
 import com.brokenshotgun.runlines.data.ScriptReaderDbHelper;
 import com.brokenshotgun.runlines.model.Script;
@@ -359,13 +359,15 @@ public class MainActivity extends AppCompatActivity {
             public void run() {
                 String content = fileToString(filename);
                 if (content == null) {
-                    if (importCallback != null)
+                    if (importCallback != null) {
                         importCallback.onFailure();
+                    }
                     return;
                 }
-                Script result = FountainParser.parse(content);
-                if (importCallback != null)
+                Script result = FountainSerializer.deserialize(content);
+                if (importCallback != null) {
                     importCallback.onSuccess(result);
+                }
             }
         }).start();
     }

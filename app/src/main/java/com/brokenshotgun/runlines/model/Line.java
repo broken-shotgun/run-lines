@@ -28,12 +28,20 @@ public class Line implements Parcelable {
     private Actor actor;
     private String line;
     public int order;
+    public boolean isContinuation;
+    public boolean isVoiceOver;
     public transient boolean enabled;
 
     public Line(Actor actor, String line) {
         this.actor = actor;
         this.line = line;
         this.enabled = true;
+        this.isContinuation = false;
+        this.isVoiceOver = false;
+    }
+
+    public void addDialogue(String newLine) {
+        this.line += "\n" + newLine;
     }
 
     public void setActor(Actor actor) {

@@ -77,7 +77,6 @@ public class Script implements Parcelable {
         allVoices = new ArrayList<>();
         actorVoices = new HashMap<>();
 
-        // TODO parse tokens to Script model
         parseTitleTokens(titleTokens);
         parseBodyTokens(bodyTokens);
     }
@@ -120,31 +119,49 @@ public class Script implements Parcelable {
     }
 
     private void parseBodyTokens(@NotNull FNElement[] bodyTokens) {
+        Scene currentScene = new Scene();  // TODO if we start without a scene heading, make a new scene called "Untitled"
+        Map<String, Actor> actorMap = new HashMap<>();
+        Actor currentActor = null;
+        Line currentLine = null;
         for(FNElement element : bodyTokens) {
             switch (element.getElementType()) {
                 case "Scene Heading":
-                    // TODO handle scenes
+                    if (currentScene.getName() == null) {
+                        currentScene = new Scene(element.getElementText());
+                    }
+                    else {
+                        Scene previousScene = currentScene;
+                        scenes.add(previousScene);
+                        currentScene = new Scene(element.getElementText());
+                    }
                     break;
                 case "Section Heading":
-                    // TODO handle section
-                    break;
+                    // TODO handle section (ignore, preserve in scene object?  or treat as action?)
                 case "Synopsis":
-                    // TODO handle synopsis
-                    break;
+                    // TODO handle synopsis (ignore, preserve in scene object? or treat as action?)
+                case "Transition":
                 case "Action":
-                    // TODO handle action
+                    currentScene.addAction(element.getElementText());
                     break;
                 case "Character":
-                    // TODO handle character
-                    break;
-                case "Dialogue":
-                    // TODO handle dialogue
+                    String actorName = element.getElementText();
+                    if (!actorMap.containsKey(actorName)) {
+                        currentActor = new Actor(actorName);
+                        actorMap.put(actorName, currentActor);
+                        addActor(currentActor);
+                    }
+                    currentActor = actorMap.get(actorName);
+                    currentLine = null;
                     break;
                 case "Parenthetical":
-                    // TODO handle parenthetical
-                    break;
-                case "Transition":
-                    // TODO handle transition
+                case "Dialogue":
+                    if (currentLine == null) {
+                        currentLine = new Line(currentActor, element.getElementText());
+                        currentScene.addLine(currentLine);
+                    }
+                    else {
+                        currentLine.addDialogue(element.getElementText());
+                    }
                     break;
             }
         }

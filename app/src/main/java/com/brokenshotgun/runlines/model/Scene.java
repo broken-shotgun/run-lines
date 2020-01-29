@@ -29,6 +29,10 @@ public class Scene implements Parcelable {
     private int number;
     private final List<Line> lines;
 
+    public Scene() {
+        this(null, 0, new ArrayList<Line>());
+    }
+
     public Scene(String name) {
         this(name, 0, new ArrayList<Line>());
     }

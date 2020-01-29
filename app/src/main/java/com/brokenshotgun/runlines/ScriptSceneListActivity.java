@@ -240,6 +240,7 @@ public class ScriptSceneListActivity extends AppCompatActivity {
     }
 
     private void exportScript(Script script, Uri exportFileUri, ExportScriptHandler exportScriptHandler) {
+        // TODO replace with FountainSerializer
         String fountainScript = FountainParser.format(script);
         ParcelFileDescriptor pfd = null;
         FileOutputStream fileOutputStream = null;
