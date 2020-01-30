@@ -99,6 +99,13 @@ object FountainSerializer {
     const val UNDERLINE_TEMPLATE             = "Underline"
 
     @JvmStatic
+    fun getCharacterExtensions(characterName: String) : List<String> {
+        val charExtList = mutableListOf<String>()
+        CHARACTER_EXTENSION_PATTERN.toRegex().findAll(characterName).forEach { charExtList.add(it.value) }
+        return charExtList.toList()
+    }
+
+    @JvmStatic
     fun serialize(script: Script): String {
         // TODO
         return ""

@@ -63,8 +63,15 @@ public class LineArrayAdapter extends ArrayAdapter<Line> {
 
         boolean enabled = false;
         if (line != null) {
-            String name = line.getActor().getName();
-            switch (name) {
+            StringBuilder name = new StringBuilder(line.getActor().getName());
+            if (line.characterExtensions.size() > 0) {
+                name.append(" ");
+                for (String ext : line.characterExtensions) {
+                    name.append(ext);
+                }
+            }
+
+            switch (name.toString()) {
                 case Actor.ACTION_NAME:
                 case Actor.SECTION_NAME:
                 case Actor.SYNOPSIS_NAME:
@@ -75,7 +82,7 @@ public class LineArrayAdapter extends ArrayAdapter<Line> {
                     break;
             }
 
-            viewHolder.nameText.setText(name);
+            viewHolder.nameText.setText(name.toString());
             viewHolder.lineText.setText(Html.fromHtml(line.getLineHtml()));
             enabled = line.enabled;
         }

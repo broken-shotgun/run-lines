@@ -114,7 +114,7 @@ public class Script implements Parcelable {
     private void parseBodyTokens(@NotNull FNElement[] bodyTokens) {
         Scene currentScene = new Scene();  // TODO if we start without a scene heading, make a new scene called "Untitled"
         Map<String, Actor> actorMap = new HashMap<>();
-        Actor currentActor = null;
+        Actor currentActor;
         Line currentLine = null;
         for (FNElement element : bodyTokens) {
             switch (element.getElementType()) {
@@ -140,23 +140,28 @@ public class Script implements Parcelable {
                 case "Character":
                     String actorName = element.getElementText();
 
-                    // TODO how to handle character extensions?
-                    actorName = actorName.replaceAll(FountainSerializer.CHARACTER_EXTENSION_PATTERN, "");
+                    // find and separate out character extensions
+                    List<String> extensions = FountainSerializer.getCharacterExtensions(actorName);
+                    if (extensions.size() > 0) {
+                        actorName = actorName.replaceAll(FountainSerializer.CHARACTER_EXTENSION_PATTERN, "").trim();
+                    }
 
+                    // setup actor
                     if (!actorMap.containsKey(actorName)) {
                         currentActor = new Actor(actorName);
                         actorMap.put(actorName, currentActor);
                         addActor(currentActor);
                     }
                     currentActor = actorMap.get(actorName);
-                    currentLine = null;
+
+                    // start new line
+                    currentLine = new Line(currentActor);
+                    currentLine.characterExtensions.addAll(extensions);
+                    currentScene.addLine(currentLine);
                     break;
                 case "Parenthetical":
                 case "Dialogue":
-                    if (currentLine == null) {
-                        currentLine = new Line(currentActor, element.getElementText());
-                        currentScene.addLine(currentLine);
-                    } else {
+                    if (currentLine != null) {
                         currentLine.addDialogue(element.getElementText());
                     }
                     break;

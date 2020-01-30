@@ -21,6 +21,8 @@ import android.os.Parcelable;
 
 import androidx.annotation.NonNull;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -30,7 +32,13 @@ public class Line implements Parcelable {
     public int order;
     public boolean isContinuation;
     public boolean isVoiceOver;
+    public final List<String> characterExtensions;
+
     public transient boolean enabled;
+
+    public Line(Actor actor) {
+        this(actor, "");
+    }
 
     public Line(Actor actor, String line) {
         this.actor = actor;
@@ -38,6 +46,7 @@ public class Line implements Parcelable {
         this.enabled = true;
         this.isContinuation = false;
         this.isVoiceOver = false;
+        this.characterExtensions = new ArrayList<>();
     }
 
     public void addDialogue(String newLine) {
@@ -122,11 +131,11 @@ public class Line implements Parcelable {
         return lineHtml;
     }
 
-    @NonNull
     @Override
     public String toString() {
         return "Line{" +
                 "line='" + line + '\'' +
+                ", characterExtensions=" + characterExtensions +
                 '}';
     }
 
@@ -140,12 +149,15 @@ public class Line implements Parcelable {
         dest.writeParcelable(actor, flags);
         dest.writeString(line);
         dest.writeInt(order);
+        dest.writeStringList(characterExtensions);
     }
 
     private Line(Parcel in) {
         actor = in.readParcelable(Actor.class.getClassLoader());
         line = in.readString();
         order = in.readInt();
+        characterExtensions = new ArrayList<>();
+        in.readStringList(characterExtensions);
         enabled = true;
     }
 
