@@ -32,6 +32,7 @@ object FountainSerializer {
     private const val FIRST_LINE_ACTION_PATTERN  = "^\\n\\n([^<>\\n#]*?)\\n"
     const val SCENE_NUMBER_PATTERN       = "(\\#([0-9A-Za-z\\.\\)-]+)\\#)"
     private const val SECTION_HEADER_PATTERN     = "((#+)(\\s*[^\\n]*))\\n?"
+    const val CHARACTER_EXTENSION_PATTERN = "(\\([^<>]*?\\)[\\s]?)"
 
     /** Templates */
 

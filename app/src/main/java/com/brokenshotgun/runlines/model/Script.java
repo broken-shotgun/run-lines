@@ -23,6 +23,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.brokenshotgun.runlines.data.FNElement;
+import com.brokenshotgun.runlines.data.FountainSerializer;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -138,6 +139,10 @@ public class Script implements Parcelable {
                     break;
                 case "Character":
                     String actorName = element.getElementText();
+
+                    // TODO how to handle character extensions?
+                    actorName = actorName.replaceAll(FountainSerializer.CHARACTER_EXTENSION_PATTERN, "");
+
                     if (!actorMap.containsKey(actorName)) {
                         currentActor = new Actor(actorName);
                         actorMap.put(actorName, currentActor);
