@@ -112,7 +112,7 @@ public class Script implements Parcelable {
     }
 
     private void parseBodyTokens(@NotNull FNElement[] bodyTokens) {
-        Scene currentScene = new Scene();  // TODO if we start without a scene heading, make a new scene called "Untitled"
+        Scene currentScene = new Scene();
         Map<String, Actor> actorMap = new HashMap<>();
         Actor currentActor;
         Line currentLine = null;

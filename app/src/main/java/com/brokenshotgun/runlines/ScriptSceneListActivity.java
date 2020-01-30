@@ -36,7 +36,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
 import com.brokenshotgun.runlines.adapters.SceneArrayAdapter;
-import com.brokenshotgun.runlines.data.FountainParser;
+import com.brokenshotgun.runlines.data.FountainSerializer;
 import com.brokenshotgun.runlines.data.ScriptReaderDbHelper;
 import com.brokenshotgun.runlines.model.Scene;
 import com.brokenshotgun.runlines.model.Script;
@@ -240,8 +240,7 @@ public class ScriptSceneListActivity extends AppCompatActivity {
     }
 
     private void exportScript(Script script, Uri exportFileUri, ExportScriptHandler exportScriptHandler) {
-        // TODO replace with FountainSerializer
-        String fountainScript = FountainParser.format(script);
+        String fountainScript = FountainSerializer.serialize(script);
         ParcelFileDescriptor pfd = null;
         FileOutputStream fileOutputStream = null;
         try {

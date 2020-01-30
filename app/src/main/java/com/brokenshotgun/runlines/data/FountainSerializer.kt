@@ -1,5 +1,6 @@
 package com.brokenshotgun.runlines.data
 
+import com.brokenshotgun.runlines.model.Actor
 import com.brokenshotgun.runlines.model.Script
 import java.util.*
 
@@ -107,8 +108,38 @@ object FountainSerializer {
 
     @JvmStatic
     fun serialize(script: Script): String {
-        // TODO
-        return ""
+        val builder = StringBuilder()
+
+        // TODO add other preserved title page elements
+        builder.append("Title: ").append(script.name).append("\n\n")
+
+        for (scene in script.scenes) {
+            var sceneName = scene.name.toUpperCase(Locale.getDefault())
+            if (!sceneName.startsWith("INT.") && !sceneName.startsWith("EXT.")) {
+                sceneName = ".$sceneName"
+            }
+            builder.append(sceneName).append("\n\n")
+            for (line in scene.lines) {
+                val actorName = line.actor.name.toUpperCase(Locale.getDefault())
+                if (actorName != "" &&
+                    actorName != Actor.ACTION_NAME &&
+                    actorName != Actor.SECTION_NAME &&
+                    actorName != Actor.SYNOPSIS_NAME) {
+                    builder.append(actorName).append("\n")
+                }
+                when(actorName) {
+                    Actor.SECTION_NAME -> {
+                        // TODO restore section format
+                    }
+                    Actor.SYNOPSIS_NAME -> {
+                        // TODO restore section format
+                    }
+                }
+                builder.append(line.line).append("\n\n")
+            }
+        }
+
+        return builder.toString()
     }
 
     @JvmStatic
