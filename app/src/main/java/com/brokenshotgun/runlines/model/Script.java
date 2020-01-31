@@ -115,13 +115,8 @@ public class Script implements Parcelable {
         for (FNElement element : bodyTokens) {
             switch (element.getElementType()) {
                 case "Scene Heading":
-                    if (currentScene.getName() == null) {
-                        currentScene = new Scene(element.getElementText());
-                    } else {
-                        Scene previousScene = currentScene;
-                        scenes.add(previousScene);
-                        currentScene = new Scene(element.getElementText());
-                    }
+                    currentScene = new Scene(element.getElementText());
+                    scenes.add(currentScene);
                     break;
                     // TODO how to handle section and synopsis that are independent of scene order?
 //                case "Section Heading":
@@ -161,6 +156,11 @@ public class Script implements Parcelable {
                     }
                     break;
             }
+        }
+        // fix for script that has no scene headings
+        if (currentScene.getName() == null) {
+            currentScene.setName("Untitled scene");
+            scenes.add(currentScene);
         }
     }
 
