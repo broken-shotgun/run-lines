@@ -56,8 +56,6 @@ public class Script implements Parcelable {
         actorVoices = new HashMap<>();
 
         actors.add(Actor.ACTION);
-        actors.add(Actor.SECTION);
-        actors.add(Actor.SYNOPSIS);
     }
 
     public Script(@NotNull Map<String, ? extends List<String>> titleTokens, @NotNull FNElement[] bodyTokens) {
@@ -67,8 +65,6 @@ public class Script implements Parcelable {
         actorVoices = new HashMap<>();
 
         actors.add(Actor.ACTION);
-        actors.add(Actor.SECTION);
-        actors.add(Actor.SYNOPSIS);
 
         parseTitleTokens(titleTokens);
         parseBodyTokens(bodyTokens);
@@ -127,12 +123,11 @@ public class Script implements Parcelable {
                         currentScene = new Scene(element.getElementText());
                     }
                     break;
-                case "Section Heading":
-                    currentScene.addSection(element.getElementText());
-                    break;
-                case "Synopsis":
-                    currentScene.addSynopsis(element.getElementText());
-                    break;
+                    // TODO how to handle section and synopsis that are independent of scene order?
+//                case "Section Heading":
+//                    break;
+//                case "Synopsis":
+//                    break;
                 case "Transition":
                 case "Action":
                     currentScene.addAction(element.getElementText());

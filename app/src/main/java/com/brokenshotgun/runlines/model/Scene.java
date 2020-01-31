@@ -71,14 +71,6 @@ public class Scene implements Parcelable {
         lines.add(new Line(Actor.ACTION, action));
     }
 
-    public void addSection(String section) {
-        lines.add(new Line(Actor.SECTION, section));
-    }
-
-    public void addSynopsis(String synopsis) {
-        lines.add(new Line(Actor.SYNOPSIS, synopsis));
-    }
-
     @NonNull
     @Override
     public String toString() {

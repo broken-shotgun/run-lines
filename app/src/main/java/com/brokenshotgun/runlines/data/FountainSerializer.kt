@@ -122,18 +122,8 @@ object FountainSerializer {
             for (line in scene.lines) {
                 val actorName = line.actor.name.toUpperCase(Locale.getDefault())
                 if (actorName != "" &&
-                    actorName != Actor.ACTION_NAME &&
-                    actorName != Actor.SECTION_NAME &&
-                    actorName != Actor.SYNOPSIS_NAME) {
+                    actorName != Actor.ACTION_NAME) {
                     builder.append(actorName).append("\n")
-                }
-                when(actorName) {
-                    Actor.SECTION_NAME -> {
-                        // TODO restore section format
-                    }
-                    Actor.SYNOPSIS_NAME -> {
-                        // TODO restore section format
-                    }
                 }
                 builder.append(line.line).append("\n\n")
             }

@@ -30,8 +30,6 @@ public class Line implements Parcelable {
     private Actor actor;
     private String line;
     public int order;
-    public boolean isContinuation;
-    public boolean isVoiceOver;
     public final List<String> characterExtensions;
 
     public transient boolean enabled;
@@ -44,13 +42,16 @@ public class Line implements Parcelable {
         this.actor = actor;
         this.line = line;
         this.enabled = true;
-        this.isContinuation = false;
-        this.isVoiceOver = false;
         this.characterExtensions = new ArrayList<>();
     }
 
     public void addDialogue(String newLine) {
-        this.line += "\n" + newLine;
+        if (line == null || line.equals("")) {
+            this.line = newLine;
+        } else {
+            this.line += "\n" + newLine;
+        }
+
     }
 
     public void setActor(Actor actor) {
@@ -131,6 +132,7 @@ public class Line implements Parcelable {
         return lineHtml;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "Line{" +
