@@ -101,6 +101,7 @@ object FountainSerializer {
     fun serialize(script: Script): String {
         val builder = StringBuilder()
 
+        // Note: this is for backwards compatibility as pre 0.8.5 the name field was nullable
         if (script.name != null) {
             builder.append("Title: ").append(script.name).append("\n")
         }

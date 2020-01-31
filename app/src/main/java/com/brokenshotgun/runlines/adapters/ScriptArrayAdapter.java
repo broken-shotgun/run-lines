@@ -58,7 +58,11 @@ public class ScriptArrayAdapter extends ArrayAdapter<Script> {
         Script script = getItem(position);
 
         if (script != null) {
-            viewHolder.nameText.setText(script.getName().equals("") ? context.getString(R.string.label_no_script_name) : script.getName());
+            // Note: this is for backwards compatibility as pre 0.8.5 the name field was nullable
+            if(script.getName() == null || script.getName().equals("")) {
+                script.setName("Untitled script");
+            }
+            viewHolder.nameText.setText(script.getName());
         }
 
         return convertView;

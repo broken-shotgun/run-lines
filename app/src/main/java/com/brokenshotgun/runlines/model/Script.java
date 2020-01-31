@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 public class Script implements Parcelable {
-    private String name;
+    @NonNull private String name;
     private String credit;
     private String author;
     private String source;
@@ -48,7 +48,7 @@ public class Script implements Parcelable {
 
     public long id = -1L;
 
-    public Script(String name) {
+    public Script(@NonNull String name) {
         this.name = name;
         actors = new ArrayList<>();
         scenes = new ArrayList<>();
@@ -59,6 +59,7 @@ public class Script implements Parcelable {
     }
 
     public Script(@NotNull Map<String, ? extends List<String>> titleTokens, @NotNull FNElement[] bodyTokens) {
+        this.name = "Untitled script"; // set to something in case no title page
         actors = new ArrayList<>();
         scenes = new ArrayList<>();
         allVoices = new ArrayList<>();
@@ -200,6 +201,7 @@ public class Script implements Parcelable {
         actors.add(actor);
     }
 
+    @NonNull
     public String getName() {
         return name;
     }
@@ -236,7 +238,7 @@ public class Script implements Parcelable {
         return scenes.get(sceneIndex);
     }
 
-    public void setName(String name) {
+    public void setName(@NonNull String name) {
         this.name = name;
     }
 
@@ -334,7 +336,8 @@ public class Script implements Parcelable {
 
     @SuppressWarnings("unchecked")
     protected Script(Parcel in) {
-        name = in.readString();
+        String tmpName = in.readString();
+        name = tmpName != null ? tmpName : "Untitled script";
         credit = in.readString();
         author = in.readString();
         source = in.readString();
