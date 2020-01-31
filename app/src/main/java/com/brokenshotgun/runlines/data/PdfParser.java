@@ -29,6 +29,6 @@ public class PdfParser {
             trimmed.append(line.trim());
             trimmed.append("\n");
         }
-        return FountainParser.parse(trimmed.toString());
+        return FountainSerializer.deserialize(trimmed.toString());
     }
 }
