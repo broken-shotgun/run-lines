@@ -116,6 +116,12 @@ public class Script implements Parcelable {
         for (FNElement element : bodyTokens) {
             switch (element.getElementType()) {
                 case "Scene Heading":
+                    // TODO hold off handling this until handling section and synopsis
+//                    // fix for an initial scene with no scene heading
+//                    if (currentScene.getName() == null && currentScene.getLines().size() > 0) {
+//                        currentScene.setName("Untitled scene");
+//                        scenes.add(currentScene);
+//                    }
                     currentScene = new Scene(element.getElementText());
                     scenes.add(currentScene);
                     break;
