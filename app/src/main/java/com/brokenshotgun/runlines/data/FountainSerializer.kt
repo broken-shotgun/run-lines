@@ -18,10 +18,9 @@ object FountainSerializer {
     private const val UNIVERSAL_LINE_BREAKS_TEMPLATE = "\n"
 
     /** Patterns */
-
     private const val SCENE_HEADER_PATTERN       = "(?<=\\n)(([iI][nN][tT]|[eE][xX][tT]|[^\\w][eE][sS][tT]|\\.|[iI]\\.?/[eE]\\.?)([^\\n]+))\\n"
     private const val ACTION_PATTERN             = "([^<>]*?)(\\n{2}|\\n<)"
-    const val MULTI_LINE_ACTION_PATTERN  = "\n{2}(([^a-z\\n:]+?[\\.\\?,\\s!\\*_]*?)\n{2}){1,2}"
+    private const val MULTI_LINE_ACTION_PATTERN  = "\n{2}(([^a-z\\n:]+?[\\.\\?,\\s!\\*_]*?)\n{2}){1,2}"
     private const val CHARACTER_CUE_PATTERN      = "(?<=\\n)([ \\t]*[^<>a-z\\s\\/\\n][^<>a-z:!\\?\\n]*[^<>a-z\\(!\\?:,\\n\\.][ \\t]?)\\n{1}(?!\\n)"
     private const val DIALOGUE_PATTERN           = "(<(Character|Parenthetical)>[^<>\\n]+<\\/(Character|Parenthetical)>)([^<>]*?)(?=\\n{2}|\\n{1}<Parenthetical>)"
     private const val PARENTHETICAL_PATTERN      = "(\\([^<>]*?\\)[\\s]?)\n"
@@ -31,15 +30,15 @@ object FountainSerializer {
     private const val PAGE_BREAK_PATTERN         = "(?<=\\n)(\\s*[\\=\\-\\_]{3,8}\\s*)\\n{1}"
     private const val CLEANUP_PATTERN            = "<Action>\\s*<\\/Action>"
     private const val FIRST_LINE_ACTION_PATTERN  = "^\\n\\n([^<>\\n#]*?)\\n"
-    const val SCENE_NUMBER_PATTERN       = "(\\#([0-9A-Za-z\\.\\)-]+)\\#)"
-    private const val SECTION_HEADER_PATTERN     = "((#+)(\\s*[^\\n]*))\\n?"
+    private const val SCENE_NUMBER_PATTERN       = "(\\#([0-9A-Za-z\\.\\)-]+)\\#)"
+    private const val SECTION_HEADER_PATTERN     = "\\n+((#+)(\\s*[^\\n]*))"
+
     const val CHARACTER_EXTENSION_PATTERN = "(\\([^<>]*?\\)[\\s]?)"
 
     /** Templates */
-
     private const val SCENE_HEADER_TEMPLATE      = "\n<Scene Heading>$1</Scene Heading>"
     private const val ACTION_TEMPLATE            = "<Action>$1</Action>$2"
-    const val MULTI_LINE_ACTION_TEMPLATE = "\n<Action>$2</Action>"
+    private const val MULTI_LINE_ACTION_TEMPLATE = "\n<Action>$2</Action>"
     private const val CHARACTER_CUE_TEMPLATE     = "<Character>$1</Character>"
     private const val DIALOGUE_TEMPLATE          = "$1<Dialogue>$4</Dialogue>"
     private const val PARENTHETICAL_TEMPLATE     = "<Parenthetical>$1</Parenthetical>"
@@ -52,7 +51,6 @@ object FountainSerializer {
     private const val SECTION_HEADER_TEMPLATE    = "<Section Heading>$1</Section Heading>"
 
     /** Block Comments */
-
     private const val BLOCK_COMMENT_PATTERN      = "\\n/\\*([^<>]+?)\\*/\\n"
     private const val BRACKET_COMMENT_PATTERN    = "\\n\\[{2}([^<>]+?)]{2}\\n"
     private const val SYNOPSIS_PATTERN           = "\\n={1}([^<>=][^<>]+?)\\n"     // we need to make sure we don't catch ==== as a synopsis
@@ -64,23 +62,17 @@ object FountainSerializer {
     private const val NEWLINE_REPLACEMENT        = "@@@@@"
     private const val NEWLINE_RESTORE            = "\n"
 
-
     /** Title Page */
-
     private const val TITLE_PAGE_PATTERN             = "^([^\\n]+:(([ \\t]*|\\n)[^\\n]+\\n)+)+\\n"
     private const val INLINE_DIRECTIVE_PATTERN       = "^([\\w\\s&]+):\\s*([^\\s][\\w&,.?!:()/\\s-©*_]+)$"
     private const val MULTI_LINE_DIRECTIVE_PATTERN   = "^([\\w\\s&]+):\\s*$"
     private const val MULTI_LINE_DATA_PATTERN        = "^([ ]{2,8}|\\t)([^<>]+)$"
 
-
     /** Misc */
-
     private const val DUAL_DIALOGUE_PATTERN          = "\\^\\s*$"
     private const val CENTERED_TEXT_PATTERN          = "^>[^<>\\n]+<"
 
-
     /** Styling for FDX */
-
     const val BOLD_ITALIC_UNDERLINE_PATTERN  = "(_\\*{3}|\\*{3}_)([^<>]+)(_\\*{3}|\\*{3}_)"
     const val BOLD_ITALIC_PATTERN            = "(\\*{3})([^<>]+)(\\*{3})"
     const val BOLD_UNDERLINE_PATTERN         = "(_\\*{2}|\\*{2}_)([^<>]+)(_\\*{2}|\\*{2}_)"
@@ -90,7 +82,6 @@ object FountainSerializer {
     const val UNDERLINE_PATTERN              = "(_)([^<>_]+)(_)"
 
     /** Styling templates */
-
     const val BOLD_ITALIC_UNDERLINE_TEMPLATE = "Bold+Italic+Underline"
     const val BOLD_ITALIC_TEMPLATE           = "Bold+Italic"
     const val BOLD_UNDERLINE_TEMPLATE        = "Bold+Underline"
@@ -110,8 +101,25 @@ object FountainSerializer {
     fun serialize(script: Script): String {
         val builder = StringBuilder()
 
-        // TODO add other preserved title page elements
-        builder.append("Title: ").append(script.name).append("\n\n")
+        if (script.name != null) {
+            builder.append("Title: ").append(script.name).append("\n")
+        }
+        if (script.credit != null) {
+            builder.append("Credit: ").append(script.credit).append("\n")
+        }
+        if (script.author != null) {
+            builder.append("Author: ").append(script.author).append("\n")
+        }
+        if (script.source != null) {
+            builder.append("Source: ").append(script.source).append("\n")
+        }
+        if (script.draftDate != null) {
+            builder.append("Draft date: ").append(script.draftDate).append("\n")
+        }
+        if (script.contact != null) {
+            builder.append("Contact: ").append(script.contact).append("\n")
+        }
+        builder.append("\n\n")
 
         for (scene in script.scenes) {
             var sceneName = scene.name.toUpperCase(Locale.getDefault())
