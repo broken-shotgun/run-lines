@@ -20,14 +20,26 @@ import android.os.Parcel;
 import android.os.Parcelable;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import com.brokenshotgun.runlines.data.FNElement;
+import com.brokenshotgun.runlines.data.FountainSerializer;
+
+import org.jetbrains.annotations.NotNull;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Script implements Parcelable {
-    private String name;
+    @NonNull private String name;
+    private String credit;
+    private String author;
+    private String source;
+    private String draftDate;
+    private String contact;
     private final List<Actor> actors;
     private final List<Scene> scenes;
     private final List<String> allVoices;
@@ -36,7 +48,7 @@ public class Script implements Parcelable {
 
     public long id = -1L;
 
-    public Script(String name) {
+    public Script(@NonNull String name) {
         this.name = name;
         actors = new ArrayList<>();
         scenes = new ArrayList<>();
@@ -46,8 +58,126 @@ public class Script implements Parcelable {
         actors.add(Actor.ACTION);
     }
 
+    public Script(@NotNull Map<String, ? extends List<String>> titleTokens, @NotNull FNElement[] bodyTokens) {
+        this.name = "Untitled script"; // set to something in case no title page
+        actors = new ArrayList<>();
+        scenes = new ArrayList<>();
+        allVoices = new ArrayList<>();
+        actorVoices = new HashMap<>();
+
+        actors.add(Actor.ACTION);
+
+        parseTitleTokens(titleTokens);
+        parseBodyTokens(bodyTokens);
+    }
+
+    private void parseTitleTokens(@NotNull Map<String, ? extends List<String>> titleTokens) {
+        if (titleTokens.containsKey("title")) {
+            name = listToString(titleTokens.get("title"));
+        }
+
+        if (titleTokens.containsKey("credit")) {
+            credit = listToString(titleTokens.get("credit"));
+        }
+
+        if (titleTokens.containsKey("authors")) {
+            author = listToString(titleTokens.get("authors"));
+        }
+
+        if (titleTokens.containsKey("source")) {
+            source = listToString(titleTokens.get("source"));
+        }
+
+        if (titleTokens.containsKey("draft date")) {
+            draftDate = listToString(titleTokens.get("draft date"));
+        }
+
+        if (titleTokens.containsKey("contact")) {
+            contact = listToString(titleTokens.get("contact"));
+        }
+    }
+
+    private String listToString(@Nullable List<String> value) {
+        if (value == null) {
+            return "";
+        }
+        StringBuilder result = new StringBuilder();
+        for (String str : value) {
+            result.append(str).append(" ");
+        }
+        return result.toString().trim();
+    }
+
+    private void parseBodyTokens(@NotNull FNElement[] bodyTokens) {
+        Scene currentScene = new Scene();
+        Map<String, Actor> actorMap = new HashMap<>();
+        Actor currentActor;
+        Line currentLine = null;
+        for (FNElement element : bodyTokens) {
+            switch (element.getElementType()) {
+                case "Scene Heading":
+                    // TODO hold off handling this until handling section and synopsis
+//                    // fix for an initial scene with no scene heading
+//                    if (currentScene.getName() == null && currentScene.getLines().size() > 0) {
+//                        currentScene.setName("Untitled scene");
+//                        scenes.add(currentScene);
+//                    }
+                    currentScene = new Scene(element.getElementText());
+                    scenes.add(currentScene);
+                    break;
+                    // TODO how to handle section and synopsis that are independent of scene order?
+//                case "Section Heading":
+//                    break;
+//                case "Synopsis":
+//                    break;
+                case "Transition":
+                case "Action":
+                    currentScene.addAction(element.getElementText());
+                    break;
+                case "Character":
+                    String actorName = element.getElementText();
+
+                    // find and separate out character extensions
+                    List<String> extensions = FountainSerializer.getCharacterExtensions(actorName);
+                    if (extensions.size() > 0) {
+                        actorName = actorName.replaceAll(FountainSerializer.CHARACTER_EXTENSION_PATTERN, "").trim();
+                    }
+
+                    // setup actor
+                    if (!actorMap.containsKey(actorName)) {
+                        currentActor = new Actor(actorName);
+                        actorMap.put(actorName, currentActor);
+                        addActor(currentActor);
+                    }
+                    currentActor = actorMap.get(actorName);
+
+                    // start new line
+                    currentLine = new Line(currentActor);
+                    currentLine.characterExtensions.addAll(extensions);
+                    currentScene.addLine(currentLine);
+                    break;
+                case "Parenthetical":
+                case "Dialogue":
+                    if (currentLine != null) {
+                        currentLine.addDialogue(element.getElementText());
+                    }
+                    break;
+            }
+        }
+        // fix for script that has no scene headings
+        if (currentScene.getName() == null) {
+            currentScene.setName("Untitled scene");
+            scenes.add(currentScene);
+        }
+    }
+
     public Script(Script copy) {
         this.name = copy.name;
+        this.credit = copy.credit;
+        this.author = copy.author;
+        this.source = copy.source;
+        this.draftDate = copy.draftDate;
+        this.contact = copy.contact;
         this.actors = new ArrayList<>(copy.actors);
         this.scenes = new ArrayList<>(copy.scenes);
         this.allVoices = new ArrayList<>(copy.allVoices);
@@ -57,6 +187,11 @@ public class Script implements Parcelable {
 
     public void copy(Script copy) {
         this.name = copy.name;
+        this.credit = copy.credit;
+        this.author = copy.author;
+        this.source = copy.source;
+        this.draftDate = copy.draftDate;
+        this.contact = copy.contact;
         this.actors.clear();
         this.actors.addAll(copy.actors);
         this.scenes.clear();
@@ -72,8 +207,29 @@ public class Script implements Parcelable {
         actors.add(actor);
     }
 
+    @NonNull
     public String getName() {
         return name;
+    }
+
+    public String getCredit() {
+        return credit;
+    }
+
+    public String getAuthor() {
+        return author;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public String getDraftDate() {
+        return draftDate;
+    }
+
+    public String getContact() {
+        return contact;
     }
 
     public List<Actor> getActors() {
@@ -88,8 +244,28 @@ public class Script implements Parcelable {
         return scenes.get(sceneIndex);
     }
 
-    public void setName(String name) {
+    public void setName(@NonNull String name) {
         this.name = name;
+    }
+
+    public void setCredit(String credit) {
+        this.credit = credit;
+    }
+
+    public void setAuthor(String author) {
+        this.author = author;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
+    }
+
+    public void setDraftDate(String draftDate) {
+        this.draftDate = draftDate;
+    }
+
+    public void setContact(String contact) {
+        this.contact = contact;
     }
 
     public void removeActor(Actor actor) {
@@ -130,6 +306,11 @@ public class Script implements Parcelable {
     public String toString() {
         return "Script{" +
                 "name='" + name + '\'' +
+                ", credit='" + credit + '\'' +
+                ", author='" + author + '\'' +
+                ", source='" + source + '\'' +
+                ", draftDate='" + draftDate + '\'' +
+                ", contact='" + contact + '\'' +
                 ", actors=" + actors +
                 ", scenes=" + scenes +
                 ", allVoices=" + allVoices +
@@ -147,6 +328,11 @@ public class Script implements Parcelable {
     @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeString(this.name);
+        dest.writeString(this.credit);
+        dest.writeString(this.author);
+        dest.writeString(this.source);
+        dest.writeString(this.draftDate);
+        dest.writeString(this.contact);
         dest.writeTypedList(this.actors);
         dest.writeTypedList(this.scenes);
         dest.writeStringList(this.allVoices);
@@ -154,8 +340,15 @@ public class Script implements Parcelable {
         dest.writeLong(this.id);
     }
 
+    @SuppressWarnings("unchecked")
     protected Script(Parcel in) {
-        name = in.readString();
+        String tmpName = in.readString();
+        name = tmpName != null ? tmpName : "Untitled script";
+        credit = in.readString();
+        author = in.readString();
+        source = in.readString();
+        draftDate = in.readString();
+        contact = in.readString();
         ArrayList<Actor> tmpActors = in.createTypedArrayList(Actor.CREATOR);
         actors = (tmpActors != null) ? new ArrayList<>(tmpActors) : new ArrayList<Actor>();
         ArrayList<Scene> tmpScenes = in.createTypedArrayList(Scene.CREATOR);

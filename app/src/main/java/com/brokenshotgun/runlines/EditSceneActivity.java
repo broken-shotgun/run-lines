@@ -252,7 +252,10 @@ public class EditSceneActivity extends AppCompatActivity {
                                 updateOrder();
                                 break;
                             case OPTION_REMOVE_ACTOR:
-                                removeActor(lineArrayAdapter.getItem(linePosition).getActor());
+                                Line selectedLine = lineArrayAdapter.getItem(linePosition);
+                                if (selectedLine != null) {
+                                    removeActor(selectedLine.getActor());
+                                }
                                 break;
                         }
                     }
@@ -262,8 +265,9 @@ public class EditSceneActivity extends AppCompatActivity {
     }
 
     private void removeActor(Actor actor) {
+        // TODO prompt to delete all lines attached to actor
+
         if (script.getActors().size() == 1) {
-            // TODO if removing last actor, warn about deleting all lines
             return;
         }
 

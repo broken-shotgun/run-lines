@@ -62,9 +62,21 @@ public class LineArrayAdapter extends ArrayAdapter<Line> {
 
         boolean enabled = false;
         if (line != null) {
-            String name = line.getActor().getName();
-            viewHolder.nameText.setVisibility(name.equals(Actor.ACTION_NAME) ? View.INVISIBLE : View.VISIBLE);
-            viewHolder.nameText.setText(name);
+            StringBuilder name = new StringBuilder(line.getActor().getName());
+            if (line.characterExtensions.size() > 0) {
+                name.append(" ");
+                for (String ext : line.characterExtensions) {
+                    name.append(ext);
+                }
+            }
+
+            if (Actor.ACTION_NAME.equals(name.toString())) {
+                viewHolder.nameText.setVisibility(View.GONE);
+            } else {
+                viewHolder.nameText.setVisibility(View.VISIBLE);
+            }
+
+            viewHolder.nameText.setText(name.toString());
             viewHolder.lineText.setText(Html.fromHtml(line.getLineHtml()));
             enabled = line.enabled;
         }

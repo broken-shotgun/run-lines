@@ -21,6 +21,8 @@ import android.os.Parcelable;
 
 import androidx.annotation.NonNull;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -28,12 +30,28 @@ public class Line implements Parcelable {
     private Actor actor;
     private String line;
     public int order;
+    public final List<String> characterExtensions;
+
     public transient boolean enabled;
+
+    public Line(Actor actor) {
+        this(actor, "");
+    }
 
     public Line(Actor actor, String line) {
         this.actor = actor;
         this.line = line;
         this.enabled = true;
+        this.characterExtensions = new ArrayList<>();
+    }
+
+    public void addDialogue(String newLine) {
+        if (line == null || line.equals("")) {
+            this.line = newLine;
+        } else {
+            this.line += "\n" + newLine;
+        }
+
     }
 
     public void setActor(Actor actor) {
@@ -78,8 +96,8 @@ public class Line implements Parcelable {
     private transient String lineHtml;
 
     private transient static final Pattern UNDERSCORE_PATTERN = Pattern.compile("_([^_]+)_");           //_underscores_
-    private transient static final Pattern ITALICIZE_PATTERN = Pattern.compile("\\*([^\\*]+)\\*");      //*italicize*
-    private transient static final Pattern BOLD_PATTERN = Pattern.compile("\\*\\*([^\\*\\*]+)\\*\\*");  //**bold**
+    private transient static final Pattern ITALICIZE_PATTERN = Pattern.compile("\\*([^*]+)\\*");      //*italicize*
+    private transient static final Pattern BOLD_PATTERN = Pattern.compile("\\*\\*([^*{2}]+)\\*\\*");  //**bold**
 
     public String getLineHtml() {
         if (lineHtml == null) {
@@ -119,6 +137,7 @@ public class Line implements Parcelable {
     public String toString() {
         return "Line{" +
                 "line='" + line + '\'' +
+                ", characterExtensions=" + characterExtensions +
                 '}';
     }
 
@@ -132,12 +151,15 @@ public class Line implements Parcelable {
         dest.writeParcelable(actor, flags);
         dest.writeString(line);
         dest.writeInt(order);
+        dest.writeStringList(characterExtensions);
     }
 
     private Line(Parcel in) {
         actor = in.readParcelable(Actor.class.getClassLoader());
         line = in.readString();
         order = in.readInt();
+        characterExtensions = new ArrayList<>();
+        in.readStringList(characterExtensions);
         enabled = true;
     }
 

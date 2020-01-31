@@ -41,7 +41,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
 import com.brokenshotgun.runlines.adapters.ScriptArrayAdapter;
-import com.brokenshotgun.runlines.data.FountainParser;
+import com.brokenshotgun.runlines.data.FountainSerializer;
 import com.brokenshotgun.runlines.data.PdfParser;
 import com.brokenshotgun.runlines.data.ScriptReaderDbHelper;
 import com.brokenshotgun.runlines.model.Script;
@@ -276,8 +276,9 @@ public class MainActivity extends AppCompatActivity {
         builder.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                if (scriptListAdapter.getItem(position) != null) {
-                    scriptListAdapter.getItem(position).setName(inputText.getText().toString().trim());
+                Script selectedScript = scriptListAdapter.getItem(position);
+                if (selectedScript != null) {
+                    selectedScript.setName(inputText.getText().toString().trim());
                     scriptListAdapter.notifyDataSetInvalidated();
                     dbHelper.updateScript(script);
                 }
@@ -343,8 +344,6 @@ public class MainActivity extends AppCompatActivity {
         showImportFileSelect();
     }
 
-    private static final int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 0;
-
     private static final int IMPORT_FILE_SELECT_REQUEST = 0;
 
     public void showImportFileSelect() {
@@ -360,13 +359,15 @@ public class MainActivity extends AppCompatActivity {
             public void run() {
                 String content = fileToString(filename);
                 if (content == null) {
-                    if (importCallback != null)
+                    if (importCallback != null) {
                         importCallback.onFailure();
+                    }
                     return;
                 }
-                Script result = FountainParser.parse(content);
-                if (importCallback != null)
+                Script result = FountainSerializer.deserialize(content);
+                if (importCallback != null) {
                     importCallback.onSuccess(result);
+                }
             }
         }).start();
     }
