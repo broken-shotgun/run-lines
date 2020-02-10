@@ -37,7 +37,6 @@ import com.brokenshotgun.runlines.data.ScriptReaderDbHelper;
 import com.brokenshotgun.runlines.model.Actor;
 import com.brokenshotgun.runlines.model.Line;
 import com.brokenshotgun.runlines.model.Script;
-import com.brokenshotgun.runlines.utils.DialogUtil;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
@@ -47,7 +46,6 @@ public class EditSceneActivity extends AppCompatActivity {
     private LineArrayAdapter lineArrayAdapter;
     private ScriptReaderDbHelper dbHelper;
     private boolean hasUnsavedChanges = false;
-    private DialogUtil dialogUtil;
 
     private CoordinatorLayout coordinatorLayout;
 
@@ -72,7 +70,6 @@ public class EditSceneActivity extends AppCompatActivity {
         setTitle(getString(R.string.title_activity_edit_script_prefix) + " \"" + (script.getScene(sceneIndex).getName().equals("") ? getString(R.string.label_no_scene_name) : script.getScene(sceneIndex).getName()) + "\"");
 
         dbHelper = new ScriptReaderDbHelper(this);
-        dialogUtil = new DialogUtil();
 
         coordinatorLayout = findViewById(R.id.coordinator_layout);
         assert coordinatorLayout != null;
@@ -155,7 +152,7 @@ public class EditSceneActivity extends AppCompatActivity {
             }
         });
 
-        dialogUtil.showDialog(builder.create());
+        builder.create().show();
     }
 
     private void showPickActorDialog(final View view, final OnActorSelectListener onActorSelectListener) {
@@ -177,7 +174,7 @@ public class EditSceneActivity extends AppCompatActivity {
             }
         });
 
-        dialogUtil.showDialog(builder.create());
+        builder.create().show();
     }
 
     private void showAddLineDialog(final Actor actor) {
@@ -206,7 +203,7 @@ public class EditSceneActivity extends AppCompatActivity {
             }
         });
 
-        dialogUtil.showDialog(builder.create());
+        builder.create().show();
     }
 
     private static final int OPTION_CHANGE_ACTOR = 0;
@@ -261,7 +258,7 @@ public class EditSceneActivity extends AppCompatActivity {
                     }
                 });
 
-        dialogUtil.showDialog(builder.create());
+        builder.create().show();
     }
 
     private void removeActor(Actor actor) {
@@ -316,7 +313,7 @@ public class EditSceneActivity extends AppCompatActivity {
             }
         });
 
-        dialogUtil.showDialog(builder.create());
+        builder.create().show();
     }
 
     private void showChangeVoiceDialog(final int linePosition) {
@@ -334,7 +331,7 @@ public class EditSceneActivity extends AppCompatActivity {
             }
         });
 
-        dialogUtil.showDialog(builder.create());
+        builder.create().show();
     }
 
     private void showEditLineDialog(final int linePosition) {
@@ -361,7 +358,7 @@ public class EditSceneActivity extends AppCompatActivity {
             }
         });
 
-        dialogUtil.showDialog(builder.create());
+        builder.create().show();
     }
 
     @Override
@@ -382,19 +379,13 @@ public class EditSceneActivity extends AppCompatActivity {
                 }
             });
 
-            dialogUtil.showDialog(builder.create());
+            builder.create().show();
         } else {
             Intent result = new Intent();
             result.putExtra("script", script);
             setResult(RESULT_OK, result);
             super.onBackPressed();
         }
-    }
-
-    @Override
-    protected void onPause() {
-        dialogUtil.dismiss();
-        super.onPause();
     }
 
     private interface OnActorSelectListener {

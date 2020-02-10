@@ -45,7 +45,6 @@ import com.brokenshotgun.runlines.data.FountainSerializer;
 import com.brokenshotgun.runlines.data.PdfParser;
 import com.brokenshotgun.runlines.data.ScriptReaderDbHelper;
 import com.brokenshotgun.runlines.model.Script;
-import com.brokenshotgun.runlines.utils.DialogUtil;
 import com.brokenshotgun.runlines.utils.Intents;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
@@ -66,7 +65,6 @@ public class MainActivity extends AppCompatActivity {
     private ScriptArrayAdapter scriptListAdapter;
     private ScriptReaderDbHelper dbHelper;
     private ListView scriptListView;
-    private DialogUtil dialogUtil;
     private Animation fabOpen, fabClose, fabRotateClockwise, fabRotateCounterClockwise;
 
     protected interface ImportCallback {
@@ -152,7 +150,6 @@ public class MainActivity extends AppCompatActivity {
         });
 
         dbHelper = new ScriptReaderDbHelper(this);
-        dialogUtil = new DialogUtil();
 
         scriptListAdapter = new ScriptArrayAdapter(this, new ArrayList<Script>());
         scriptListView.setAdapter(scriptListAdapter);
@@ -246,14 +243,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-
-        dialogUtil.showDialog(builder.create());
-    }
-
-    @Override
-    protected void onPause() {
-        dialogUtil.dismiss();
-        super.onPause();
+        builder.create().show();
     }
 
     private void showEditScriptNameDialog(final Script script, final int position) {
@@ -284,8 +274,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-
-        dialogUtil.showDialog(builder.create());
+        builder.create().show();
     }
 
     private void showConfirmDeleteDialog(final Script script) {
@@ -305,8 +294,7 @@ public class MainActivity extends AppCompatActivity {
                 dialog.dismiss();
             }
         });
-
-        dialogUtil.showDialog(builder.create());
+        builder.create().show();
     }
 
     private void showAddScriptDialog() {
@@ -332,8 +320,7 @@ public class MainActivity extends AppCompatActivity {
                 dbHelper.insertScript(newScript);
             }
         });
-
-        dialogUtil.showDialog(builder.create());
+        builder.create().show();
     }
 
     public void onAddScriptButtonClicked(View view) {
