@@ -191,6 +191,9 @@ public class MainActivity extends AppCompatActivity {
         super.onStart();
 
         PDFBoxResourceLoader.init(getApplicationContext());
+
+        RateThisApp.Config config = new RateThisApp.Config(14, 25);
+        RateThisApp.init(config);
         RateThisApp.onStart(this);
         RateThisApp.showRateDialogIfNeeded(this);
     }
