@@ -146,7 +146,7 @@ object FountainSerializer {
         val titleTokens = parseTitlePageOfString(getScriptTitlePage(script))
         val bodyTokens = parseBodyOfString(getScriptBody(script))
 
-        //*
+        /*
         // for debugging only
         println("##### all tokens for Script #####")
         println(titleTokens)
@@ -157,7 +157,7 @@ object FountainSerializer {
                     "sectionDepth=${token.sectionDepth}]\t" +
                     "<${token.elementType}>${token.elementText}</${token.elementType}>")
         }
-        //*/
+        */
 
         return Script(titleTokens, bodyTokens)
     }
