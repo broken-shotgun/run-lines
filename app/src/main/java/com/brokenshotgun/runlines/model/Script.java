@@ -18,6 +18,7 @@ package com.brokenshotgun.runlines.model;
 
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -34,6 +35,8 @@ import java.util.List;
 import java.util.Map;
 
 public class Script implements Parcelable {
+    private static final transient String TAG = Script.class.getName();
+
     @NonNull private String name;
     private String credit;
     private String author;
@@ -268,8 +271,16 @@ public class Script implements Parcelable {
         this.contact = contact;
     }
 
-    public void removeActor(Actor actor) {
+    public void replaceActor(Actor actor, Actor replacement) {
+        if (actor.equals(Actor.ACTION)) {
+            Log.w(TAG, "Cannot remove Action actor");
+            return;
+        }
+
         actors.remove(actor);
+        for (Scene scene : scenes) {
+            scene.replaceActor(actor, replacement);
+        }
     }
 
     public boolean hasActor(Actor currentActor) {

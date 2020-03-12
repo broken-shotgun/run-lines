@@ -110,4 +110,12 @@ public class Scene implements Parcelable {
             return new Scene[size];
         }
     };
+
+    public void replaceActor(Actor actor, Actor replacement) {
+        for(Line line : lines) {
+            if (line.getActor().equals(actor)) {
+                line.setActor(replacement);
+            }
+        }
+    }
 }

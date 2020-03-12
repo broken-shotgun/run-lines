@@ -253,6 +253,7 @@ public class EditSceneActivity extends AppCompatActivity {
                                 if (selectedLine != null) {
                                     removeActor(selectedLine.getActor());
                                 }
+
                                 break;
                         }
                     }
@@ -262,8 +263,6 @@ public class EditSceneActivity extends AppCompatActivity {
     }
 
     private void removeActor(Actor actor) {
-        // TODO prompt to delete all lines attached to actor
-
         if (script.getActors().size() == 1) {
             return;
         }
@@ -275,8 +274,9 @@ public class EditSceneActivity extends AppCompatActivity {
 
         hasUnsavedChanges = true;
 
-        script.removeActor(actor);
+        // TODO add ability to select replacement OR prompt to delete all lines attached to actor
         Actor replacement = script.getActors().get(0);
+        script.replaceActor(actor, replacement);
 
         for (int i = 0; i < lineArrayAdapter.getCount(); ++i) {
             Line line = lineArrayAdapter.getItem(i);
