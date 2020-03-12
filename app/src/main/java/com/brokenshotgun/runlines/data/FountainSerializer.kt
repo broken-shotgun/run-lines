@@ -31,7 +31,7 @@ object FountainSerializer {
     private const val CLEANUP_PATTERN            = "<Action>\\s*<\\/Action>"
     private const val FIRST_LINE_ACTION_PATTERN  = "^\\n\\n([^<>\\n#]*?)\\n"
     private const val SCENE_NUMBER_PATTERN       = "(\\#([0-9A-Za-z\\.\\)-]+)\\#)"
-    private const val SECTION_HEADER_PATTERN     = "\\n+((#+)(\\s*[^\\n]*))"
+    private const val SECTION_HEADER_PATTERN     = "^((#+)(\\s*[^\\n]*))\n?$"
 
     const val CHARACTER_EXTENSION_PATTERN = "(\\([^<>]*?\\)[\\s]?)"
 
@@ -157,7 +157,7 @@ object FountainSerializer {
                     "sectionDepth=${token.sectionDepth}]\t" +
                     "<${token.elementType}>${token.elementText}</${token.elementType}>")
         }
-         */
+        */
 
         return Script(titleTokens, bodyTokens)
     }
@@ -212,7 +212,7 @@ object FountainSerializer {
         }
 
         for(i in patterns.indices) {
-            scriptContent = patterns[i].toRegex().replace(scriptContent, templates[i])
+            scriptContent = patterns[i].toRegex(RegexOption.MULTILINE).replace(scriptContent, templates[i])
         }
 
         // 3rd pass - Array construction

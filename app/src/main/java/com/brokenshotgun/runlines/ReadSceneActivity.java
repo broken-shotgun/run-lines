@@ -46,7 +46,6 @@ import com.brokenshotgun.runlines.adapters.LineArrayAdapter;
 import com.brokenshotgun.runlines.model.Actor;
 import com.brokenshotgun.runlines.model.Line;
 import com.brokenshotgun.runlines.model.Script;
-import com.brokenshotgun.runlines.utils.DialogUtil;
 import com.brokenshotgun.runlines.utils.Intents;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
@@ -80,7 +79,6 @@ public class ReadSceneActivity extends AppCompatActivity {
     private boolean autoPauseEnabled;
     private String autoPauseActorName;
     private static final long TTS_RATE = 800L; //666L;
-    private DialogUtil dialogUtil;
     private SharedPreferences sharedPreferences;
     private SharedPreferences scriptPreferences;
 
@@ -105,8 +103,6 @@ public class ReadSceneActivity extends AppCompatActivity {
         assert script != null;
 
         setTitle(getString(R.string.title_activity_read_script_prefix) + " \"" + (script.getScene(sceneIndex).getName().equals("") ? getString(R.string.label_no_scene_name) : script.getScene(sceneIndex).getName()) + "\"");
-
-        dialogUtil = new DialogUtil();
 
         sharedPreferences = getPreferences(Context.MODE_PRIVATE);
         actionsEnabled = sharedPreferences.getBoolean("actionsEnabled", true);
@@ -342,8 +338,6 @@ public class ReadSceneActivity extends AppCompatActivity {
         if(textToSpeech != null) {
             textToSpeech.stop();
         }
-
-        dialogUtil.dismiss();
 
         super.onPause();
     }
@@ -647,7 +641,7 @@ public class ReadSceneActivity extends AppCompatActivity {
 
         builder.setView(inputLayout);
 
-        dialogUtil.showDialog(builder.create());
+        builder.create().show();
     }
 
     private void showAutoPauseActorSelectDialog() {
@@ -677,6 +671,6 @@ public class ReadSceneActivity extends AppCompatActivity {
             }
         });
 
-        dialogUtil.showDialog(builder.create());
+        builder.create().show();
     }
 }

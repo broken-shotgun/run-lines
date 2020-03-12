@@ -40,7 +40,6 @@ import com.brokenshotgun.runlines.data.FountainSerializer;
 import com.brokenshotgun.runlines.data.ScriptReaderDbHelper;
 import com.brokenshotgun.runlines.model.Scene;
 import com.brokenshotgun.runlines.model.Script;
-import com.brokenshotgun.runlines.utils.DialogUtil;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
@@ -52,7 +51,6 @@ public class ScriptSceneListActivity extends AppCompatActivity {
     private ListView sceneListView;
     private SceneArrayAdapter sceneArrayAdapter;
     private ScriptReaderDbHelper dbHelper;
-    private DialogUtil dialogUtil;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,7 +63,6 @@ public class ScriptSceneListActivity extends AppCompatActivity {
         assert extras != null;
         script = extras.getParcelable("script");
         dbHelper = new ScriptReaderDbHelper(this);
-        dialogUtil = new DialogUtil();
 
         setTitle(getString(R.string.script_scene_list_title_prefix) + " \"" + (script.getName().equals("") ? getString(R.string.label_no_script_name) : script.getName()) + "\"");
 
@@ -109,12 +106,6 @@ public class ScriptSceneListActivity extends AppCompatActivity {
                 exportScript(script);
             }
         });
-    }
-
-    @Override
-    protected void onPause() {
-        dialogUtil.dismiss();
-        super.onPause();
     }
 
     @Override
@@ -164,7 +155,7 @@ public class ScriptSceneListActivity extends AppCompatActivity {
                     }
                 });
 
-        dialogUtil.showDialog(builder.create());
+        builder.create().show();
     }
 
     private void showEditSceneNameDialog(final int position) {
@@ -198,7 +189,7 @@ public class ScriptSceneListActivity extends AppCompatActivity {
             }
         });
 
-        dialogUtil.showDialog(builder.create());
+        builder.create().show();
     }
 
     @Override
@@ -304,6 +295,6 @@ public class ScriptSceneListActivity extends AppCompatActivity {
             }
         });
 
-        dialogUtil.showDialog(builder.create());
+        builder.create().show();
     }
 }
