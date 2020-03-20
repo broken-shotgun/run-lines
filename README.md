@@ -12,7 +12,10 @@ It's simple, just add your script to the app, toggle whose lines you want read, 
 
 Run Lines is now open source!  
 
-If you want to add a feature, create an issue first and then create a PR that links to that issue.
+We welcome any contributions to Run Lines development through [pull requests](https://github.com/broken-shotgun/run-lines/pulls/) on GitHub. Most of our active development is in the **master** branch, so we prefer to take pull requests there (particularly for new features). We try to make sure that all new code uses Kotlin, if possible, and adheres to the [Google Kotlin coding standards](https://developer.android.com/kotlin/style-guide).
+
+Want to help and not sure where to start?  Check out our [issues](https://github.com/broken-shotgun/run-lines/issues) pages for a list of features and bugs.
+
 
 ## License
 
