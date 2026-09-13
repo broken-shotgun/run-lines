@@ -23,7 +23,6 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.provider.OpenableColumns;
 import android.util.Log;
 import android.view.Menu;
@@ -48,7 +47,6 @@ import com.brokenshotgun.runlines.model.Script;
 import com.brokenshotgun.runlines.utils.Intents;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
-import com.kobakei.ratethisapp.RateThisApp;
 import com.tom_roush.pdfbox.io.MemoryUsageSetting;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.text.PDFTextStripper;
@@ -168,11 +166,6 @@ public class MainActivity extends AppCompatActivity {
         super.onStart();
 
         PDFBoxResourceLoader.init(getApplicationContext());
-
-        RateThisApp.Config config = new RateThisApp.Config(14, 25);
-        RateThisApp.init(config);
-        RateThisApp.onStart(this);
-        RateThisApp.showRateDialogIfNeeded(this);
     }
 
     @Override
@@ -314,9 +307,9 @@ public class MainActivity extends AppCompatActivity {
     private static final int IMPORT_FILE_SELECT_REQUEST = 0;
 
     public void showImportFileSelect() {
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        Uri uri = Uri.parse(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS).getPath() + "\\Run Lines\\");
-        intent.setDataAndType(uri, "*/*");
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
         Intents.maybeStartActivityForResult(this, intent, IMPORT_FILE_SELECT_REQUEST);
     }
 
@@ -451,7 +444,7 @@ public class MainActivity extends AppCompatActivity {
                         int lastPeriodIndex = filename.lastIndexOf(".");
 
                         if (lastPeriodIndex != -1)
-                            extension = filename.substring(lastPeriodIndex).toLowerCase();
+                            extension = filename.substring(lastPeriodIndex).toLowerCase(Locale.US);
                     } else {
                         fileCursor.moveToFirst();
                         int nameIndex = fileCursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
@@ -465,7 +458,7 @@ public class MainActivity extends AppCompatActivity {
                         int lastPeriodIndex = filename.lastIndexOf(".");
 
                         if (lastPeriodIndex != -1)
-                            extension = filename.substring(lastPeriodIndex).toLowerCase();
+                            extension = filename.substring(lastPeriodIndex).toLowerCase(Locale.US);
                     }
                 }
 

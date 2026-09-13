@@ -15,11 +15,24 @@
   ~ limitations under the License.
   -->
 
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.brokenshotgun.runlines">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <queries>
+        <intent>
+            <action android:name="android.speech.tts.engine.CHECK_TTS_DATA" />
+        </intent>
+        <intent>
+            <action android:name="android.speech.tts.engine.INSTALL_TTS_DATA" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.OPEN_DOCUMENT" />
+            <category android:name="android.intent.category.OPENABLE" />
+        </intent>
+    </queries>
 
     <application
         android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/app_backup_scheme"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -28,7 +41,7 @@
 
         <activity
             android:name=".MainActivity"
-            android:label="@string/app_name"
+            android:exported="true"
             android:theme="@style/AppTheme.NoActionBar">
 
             <intent-filter>
@@ -46,15 +59,18 @@
 
         <activity
             android:name=".ReadSceneActivity"
+            android:exported="false"
             android:label="@string/title_activity_read_script"
             android:theme="@style/AppTheme.NoActionBar" />
         <activity
             android:name=".EditSceneActivity"
+            android:exported="false"
             android:label="@string/title_activity_edit_script"
             android:screenOrientation="portrait"
             android:theme="@style/AppTheme.NoActionBar" />
         <activity
             android:name=".ScriptSceneListActivity"
+            android:exported="false"
             android:label="@string/title_activity_script_scene_list"
             android:theme="@style/AppTheme.NoActionBar" />
     </application>

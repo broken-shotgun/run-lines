@@ -33,6 +33,7 @@ import android.widget.ListView
 import android.widget.SeekBar
 import android.widget.SeekBar.OnSeekBarChangeListener
 import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import com.brokenshotgun.runlines.adapters.LineArrayAdapter
@@ -66,6 +67,17 @@ class ReadSceneActivity : AppCompatActivity() {
         setContentView(R.layout.activity_read_scene)
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
+        onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    val result = Intent()
+                    result.putExtra("script", script)
+                    setResult(RESULT_OK, result)
+                    finish()
+                }
+            }
+        )
         checkTtsData()
         val extras = intent.extras!!
         script = extras["script"] as Script?
@@ -266,13 +278,6 @@ class ReadSceneActivity : AppCompatActivity() {
             textToSpeech = null
         }
         super.onDestroy()
-    }
-
-    override fun onBackPressed() {
-        val result = Intent()
-        result.putExtra("script", script)
-        setResult(RESULT_OK, result)
-        super.onBackPressed()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
