@@ -10,3 +10,5 @@
 /release
 /app/release
 app-release.apk
+
+runlines.keystore.jks

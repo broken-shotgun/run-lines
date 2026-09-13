@@ -111,4 +111,5 @@
     <string name="alert_invalid_scene_index">Invalid scene index, please check that your script is properly formatted.</string>
     <string name="button_edit_script">Edit Scene</string>
     <string name="send_to">Choose what to do with exported script</string>
+    <string name="alert_error_file_too_big">File size is too big.  Read Lines cannot read files with images and can only import if the text is selectable and in Fountain format.</string>
 </resources>
