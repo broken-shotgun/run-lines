@@ -15,55 +15,48 @@
  */
 
 apply plugin: 'com.android.application'
-apply plugin: 'kotlin-android'
-
-repositories {
-    maven {
-        url 'https://maven.google.com'
-    }
-    mavenCentral()
-}
 
 android {
-    compileSdkVersion 30
-    buildToolsVersion '31.0.0-rc2'
+    namespace 'com.brokenshotgun.runlines'
+    compileSdk 37
     defaultConfig {
         applicationId "com.brokenshotgun.runlines"
-        minSdkVersion 21
-        targetSdkVersion 30
-        versionCode 34
-        versionName "0.8.6"
+        minSdk 23
+        targetSdk 37
+        versionCode 35
+        versionName "0.9.0"
         resConfigs "en"
     }
     buildTypes {
         release {
             minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
-    packagingOptions {
-        exclude 'META-INF/DEPENDENCIES.txt'
-        exclude 'META-INF/LICENSE.txt'
-        exclude 'META-INF/NOTICE.txt'
-        exclude 'META-INF/NOTICE'
-        exclude 'META-INF/LICENSE'
-        exclude 'META-INF/DEPENDENCIES'
-        exclude 'META-INF/notice.txt'
-        exclude 'META-INF/license.txt'
-        exclude 'META-INF/dependencies.txt'
-        exclude 'META-INF/LGPL2.1'
+    packaging {
+        resources {
+            excludes += [
+                    'META-INF/DEPENDENCIES.txt',
+                    'META-INF/LICENSE.txt',
+                    'META-INF/NOTICE.txt',
+                    'META-INF/NOTICE',
+                    'META-INF/LICENSE',
+                    'META-INF/DEPENDENCIES',
+                    'META-INF/notice.txt',
+                    'META-INF/license.txt',
+                    'META-INF/dependencies.txt',
+                    'META-INF/LGPL2.1'
+            ]
+        }
     }
 }
 
 dependencies {
-    implementation fileTree(include: ['*.jar'], dir: 'libs')
-    testImplementation 'junit:junit:4.13.1'
-    implementation 'androidx.appcompat:appcompat:1.2.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
-    implementation 'com.google.android.material:material:1.3.0'
-    implementation 'com.google.code.gson:gson:2.8.6'
-    implementation 'com.tom_roush:pdfbox-android:1.8.10.1'
-    implementation 'io.github.kobakei:ratethisapp:1.0.5'
-    implementation "androidx.core:core-ktx:1.3.2"
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    testImplementation 'junit:junit:4.13.2'
+    implementation 'androidx.appcompat:appcompat:1.8.0'
+    implementation 'com.google.android.material:material:1.14.0'
+    implementation 'com.google.code.gson:gson:2.14.0'
+    implementation 'com.tom-roush:pdfbox-android:1.8.10.3'
+    implementation 'androidx.core:core-ktx:1.19.0'
 }

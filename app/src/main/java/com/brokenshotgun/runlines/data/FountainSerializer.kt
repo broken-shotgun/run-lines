@@ -101,10 +101,8 @@ object FountainSerializer {
     fun serialize(script: Script): String {
         val builder = StringBuilder()
 
-        // Note: this is for backwards compatibility as pre 0.8.5 the name field was nullable
-        if (script.name != null) {
-            builder.append("Title: ").append(script.name).append("\n")
-        }
+        builder.append("Title: ").append(script.name).append("\n")
+
         if (script.credit != null) {
             builder.append("Credit: ").append(script.credit).append("\n")
         }
@@ -123,13 +121,13 @@ object FountainSerializer {
         builder.append("\n\n")
 
         for (scene in script.scenes) {
-            var sceneName = scene.name.toUpperCase(Locale.getDefault())
+            var sceneName = scene.name.uppercase(Locale.getDefault())
             if (!sceneName.startsWith("INT.") && !sceneName.startsWith("EXT.")) {
                 sceneName = ".$sceneName"
             }
             builder.append(sceneName).append("\n\n")
             for (line in scene.lines) {
-                val actorName = line.actor.name.toUpperCase(Locale.getDefault())
+                val actorName = line.actor.name.uppercase(Locale.getDefault())
                 if (actorName != "" &&
                     actorName != Actor.ACTION_NAME) {
                     builder.append(actorName).append("\n")
@@ -321,7 +319,7 @@ object FountainSerializer {
                 }
                 openDirective = null
 
-                var key = inlineResult.groupValues[1].toLowerCase(Locale.getDefault())
+                var key = inlineResult.groupValues[1].lowercase(Locale.getDefault())
                 val value = inlineResult.groupValues[2]
 
                 // validation
@@ -339,7 +337,7 @@ object FountainSerializer {
                     contents[openDirective] = directiveData.toList()
                 }
 
-                openDirective = multiLineDirectiveResult.groupValues[1].toLowerCase(Locale.getDefault())
+                openDirective = multiLineDirectiveResult.groupValues[1].lowercase(Locale.getDefault())
                 directiveData.clear()
 
                 if (openDirective == "author" || openDirective == "author(s)") {
