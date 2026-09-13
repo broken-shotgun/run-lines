@@ -59,7 +59,7 @@
     <string name="alert_script_export_error">Error: script did not export</string>
     <string name="alert_script_import_error">Error: invalid script file</string>
     <string name="tts_settings">TTS Settings</string>
-    <string name="speech_rate">Speech rate: %s</string>
+    <string name="speech_rate">Speech rate: %f</string>
     <string name="toggle_settings">Toggle lines</string>
     <string name="edit_settings">Edit script</string>
     <string-array name="edit_line_options">
@@ -111,4 +111,5 @@
     <string name="alert_invalid_scene_index">Invalid scene index, please check that your script is properly formatted.</string>
     <string name="button_edit_script">Edit Scene</string>
     <string name="send_to">Choose what to do with exported script</string>
+    <string name="alert_error_file_too_big">File size is too big.  Read Lines cannot read files with images and can only import if the text is selectable and in Fountain format.</string>
 </resources>

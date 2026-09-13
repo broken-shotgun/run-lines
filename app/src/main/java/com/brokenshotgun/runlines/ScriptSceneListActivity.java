@@ -20,7 +20,6 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
 import android.view.Menu;
@@ -69,9 +68,7 @@ public class ScriptSceneListActivity extends AppCompatActivity {
         sceneListView = findViewById(R.id.scenes_list);
         sceneArrayAdapter = new SceneArrayAdapter(this, script.getScenes());
         sceneListView.setAdapter(sceneArrayAdapter);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            sceneListView.setNestedScrollingEnabled(true);
-        }
+        sceneListView.setNestedScrollingEnabled(true);
         sceneListView.setEmptyView(findViewById(android.R.id.empty));
 
         sceneListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {

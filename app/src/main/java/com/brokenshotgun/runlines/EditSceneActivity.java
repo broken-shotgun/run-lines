@@ -19,7 +19,6 @@ package com.brokenshotgun.runlines;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.AdapterView;
@@ -28,6 +27,7 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
@@ -78,9 +78,7 @@ public class EditSceneActivity extends AppCompatActivity {
         assert linesListView != null;
         lineArrayAdapter = new LineArrayAdapter(this, script.getScene(sceneIndex).getLines());
         linesListView.setAdapter(lineArrayAdapter);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            linesListView.setNestedScrollingEnabled(true);
-        }
+        linesListView.setNestedScrollingEnabled(true);
 
         linesListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
@@ -124,6 +122,35 @@ public class EditSceneActivity extends AppCompatActivity {
                         showAddLineDialog(actor);
                     }
                 });
+            }
+        });
+
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (hasUnsavedChanges) {
+                    AlertDialog.Builder builder = new AlertDialog.Builder(EditSceneActivity.this);
+                    builder.setMessage(R.string.discard_unsaved_changes);
+                    builder.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int id) {
+                            dialog.dismiss();
+                            setResult(RESULT_CANCELED);
+                            finish();
+                        }
+                    });
+                    builder.setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int id) {
+                            dialog.dismiss();
+                        }
+                    });
+
+                    builder.create().show();
+                } else {
+                    Intent result = new Intent();
+                    result.putExtra("script", script);
+                    setResult(RESULT_OK, result);
+                    finish();
+                }
             }
         });
     }
@@ -359,33 +386,6 @@ public class EditSceneActivity extends AppCompatActivity {
         });
 
         builder.create().show();
-    }
-
-    @Override
-    public void onBackPressed() {
-        if (hasUnsavedChanges) {
-            AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage(R.string.discard_unsaved_changes);
-            builder.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
-                public void onClick(DialogInterface dialog, int id) {
-                    dialog.dismiss();
-                    setResult(RESULT_CANCELED);
-                    EditSceneActivity.super.onBackPressed();
-                }
-            });
-            builder.setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
-                public void onClick(DialogInterface dialog, int id) {
-                    dialog.dismiss();
-                }
-            });
-
-            builder.create().show();
-        } else {
-            Intent result = new Intent();
-            result.putExtra("script", script);
-            setResult(RESULT_OK, result);
-            super.onBackPressed();
-        }
     }
 
     private interface OnActorSelectListener {
