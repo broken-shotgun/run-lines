@@ -17,14 +17,12 @@
 package com.brokenshotgun.runlines.utils;
 
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.ResolveInfo;
 import android.widget.Toast;
 
 import com.brokenshotgun.runlines.R;
-
-import java.util.List;
 
 import static android.widget.Toast.LENGTH_LONG;
 
@@ -55,37 +53,29 @@ public final class Intents {
     }
 
     private static boolean maybeStartActivity(Context context, Intent intent, boolean chooser) {
-        if (hasHandler(context, intent)) {
+        try {
             if (chooser) {
                 intent = Intent.createChooser(intent, null);
             }
             context.startActivity(intent);
             return true;
-        } else {
+        } catch (ActivityNotFoundException e) {
             Toast.makeText(context, R.string.no_intent_handler, LENGTH_LONG).show();
             return false;
         }
     }
 
     private static boolean maybeStartActivityForResult(Activity activity, Intent intent, boolean chooser, int resultCode) {
-        if (hasHandler(activity, intent)) {
+        try {
             if (chooser) {
                 intent = Intent.createChooser(intent, null);
             }
             activity.startActivityForResult(intent, resultCode);
             return true;
-        } else {
+        } catch (ActivityNotFoundException e) {
             Toast.makeText(activity, R.string.no_intent_handler, LENGTH_LONG).show();
             return false;
         }
-    }
-
-    /**
-     * Queries on-device packages for a handler for the supplied {@link Intent}.
-     */
-    private static boolean hasHandler(Context context, Intent intent) {
-        List<ResolveInfo> handlers = context.getPackageManager().queryIntentActivities(intent, 0);
-        return !handlers.isEmpty();
     }
 
     private Intents() {
