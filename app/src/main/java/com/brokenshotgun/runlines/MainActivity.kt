@@ -1,62 +1,52 @@
 package com.brokenshotgun.runlines
 
-import android.app.AlertDialog
-import android.app.ProgressDialog
-import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
-import android.util.Log
-import android.widget.EditText
-import android.widget.LinearLayout
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
-import com.brokenshotgun.runlines.data.FountainSerializer
-import com.brokenshotgun.runlines.data.PdfParser
-import com.brokenshotgun.runlines.data.ScriptReaderDbHelper
-import com.brokenshotgun.runlines.model.Script
+import androidx.lifecycle.lifecycleScope
+import com.brokenshotgun.runlines.data.importing.FountainScriptContentParser
+import com.brokenshotgun.runlines.domain.usecase.ImportScriptUseCase
 import com.brokenshotgun.runlines.ui.navigation.AppNavigation
-import com.brokenshotgun.runlines.ui.screens.TtsPlaybackController
-import com.brokenshotgun.runlines.utils.Intents
-import com.google.android.material.snackbar.Snackbar
+import com.brokenshotgun.runlines.ui.reader.playback.TtsPlaybackController
 import com.tom_roush.pdfbox.io.MemoryUsageSetting
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.text.PDFTextStripper
-import com.tom_roush.pdfbox.util.PDFBoxResourceLoader
-import java.io.BufferedReader
-import java.io.File
-import java.io.IOException
-import java.io.InputStream
-import java.io.InputStreamReader
-import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
+    private val appContainer: AppContainer
+        get() = (application as RunLinesApplication).container
+    private var onImportCompleted: (() -> Unit)? = null
 
-    private lateinit var dbHelper: ScriptReaderDbHelper
-    private var progressDialog: ProgressDialog? = null
+    private val openDocument = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) {
+            onImportCompleted = null
+        } else {
+            importScript(uri)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        PDFBoxResourceLoader.init(this)
-        dbHelper = ScriptReaderDbHelper(this)
-
-        val deepLinkScriptId = intent.getLongExtra("script_id", -1L)
-        val deepLinkSceneIndex = intent.getIntExtra("scene_index", 0)
-
         setContent {
             MaterialTheme {
                 Surface(color = MaterialTheme.colorScheme.background) {
                     AppNavigation(
-                        onAddScript = { showAddScriptDialog() },
-                        onImportScript = { showImportFileSelect() },
-                        dbHelper = dbHelper,
-                        initialScriptId = deepLinkScriptId,
-                        initialSceneIndex = deepLinkSceneIndex
+                        onImportScript = { onImported ->
+                            onImportCompleted = onImported
+                            openDocument.launch(arrayOf("*/*"))
+                        },
+                        appContainer = appContainer,
+                        initialScriptId = intent.getLongExtra("script_id", -1L),
+                        initialSceneIndex = intent.getIntExtra("scene_index", 0)
                     )
                 }
             }
@@ -77,39 +67,56 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
     }
 
-    private fun showAddScriptDialog() {
-        val inputText = EditText(this).apply {
-            hint = "Enter script name"
+    private fun importScript(uri: Uri) {
+        lifecycleScope.launch {
+            try {
+                val fileName = withContext(Dispatchers.IO) {
+                    getDisplayName(uri)
+                }
+                withContext(Dispatchers.IO) {
+                    val content = if (fileName.endsWith(".pdf", ignoreCase = true)) {
+                        extractPdfText(uri)
+                    } else {
+                        contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                            ?: error("Could not open the selected file")
+                    }
+                    ImportScriptUseCase(
+                        repository = appContainer.repository,
+                        parser = FountainScriptContentParser()
+                    )(fileName, content)
+                }
+                Toast.makeText(this@MainActivity, "Script imported successfully", Toast.LENGTH_SHORT).show()
+                onImportCompleted?.invoke()
+                onImportCompleted = null
+            } catch (error: Exception) {
+                onImportCompleted = null
+                Toast.makeText(
+                    this@MainActivity,
+                    error.message ?: "Could not import script",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
         }
-        val inputLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(inputText, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { setMargins(50, 50, 50, 50) })
-        }
-        AlertDialog.Builder(this).apply {
-            setTitle("Add Script")
-            setView(inputLayout)
-            setPositiveButton("Add") { _, _ ->
-                val name = inputText.text.toString().trim()
-                if (name.isNotEmpty()) {
-                    val newScript = Script(name)
-                    dbHelper.insertScript(newScript)
+    }
+
+    private fun getDisplayName(uri: Uri): String {
+        contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val nameColumn = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (nameColumn >= 0) {
+                    cursor.getString(nameColumn)?.let { return it }
                 }
             }
-        }.create().show()
-    }
-
-    private fun showImportFileSelect() {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            addCategory(Intent.CATEGORY_OPENABLE)
-            type = "*/*"
         }
-        Intents.maybeStartActivityForResult(this, intent, 0)
+        return uri.lastPathSegment?.substringAfterLast('/') ?: "script.txt"
     }
 
-    // Note: onActivityResult needs to be handled via ActivityResultLauncher in modern Compose apps,
-    // but for this migration we can still override it or use rememberLauncherForActivityResult.
-    // For now, I'll keep the logic but it needs to be wired into the Compose shell.
+    private fun extractPdfText(uri: Uri): String {
+        val input = contentResolver.openInputStream(uri) ?: error("Could not open the selected PDF")
+        return input.use {
+            PDDocument.load(it, MemoryUsageSetting.setupTempFileOnly()).use { document ->
+                PDFTextStripper().getText(document)
+            }
+        }
+    }
 }

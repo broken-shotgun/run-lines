@@ -24,16 +24,13 @@
         <intent>
             <action android:name="android.speech.tts.engine.INSTALL_TTS_DATA" />
         </intent>
-        <intent>
-            <action android:name="android.intent.action.OPEN_DOCUMENT" />
-            <category android:name="android.intent.category.OPENABLE" />
-        </intent>
     </queries>
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 
     <application
+        android:name=".RunLinesApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/app_backup_scheme"
@@ -43,7 +40,7 @@
         android:theme="@style/AppTheme">
 
         <receiver
-            android:name=".ui.screens.TtsPlaybackReceiver"
+            android:name=".ui.reader.playback.TtsPlaybackReceiver"
             android:exported="false" />
 
         <activity
