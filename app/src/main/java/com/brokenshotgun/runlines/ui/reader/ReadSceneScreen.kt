@@ -4,10 +4,14 @@ import android.speech.tts.TextToSpeech
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
@@ -19,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
@@ -43,6 +48,7 @@ import com.brokenshotgun.runlines.domain.model.Scene
 import com.brokenshotgun.runlines.domain.model.Script
 import com.brokenshotgun.runlines.ui.components.LineEditRow
 import com.brokenshotgun.runlines.ui.reader.playback.ReadSceneTTSListener
+import java.util.Locale
 import com.brokenshotgun.runlines.ui.reader.playback.TtsPlaybackController
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,7 +84,8 @@ fun ReadSceneScreen(
     var showVoiceDialog by remember { mutableStateOf(false) }
     var showCharacterLinesDialog by remember { mutableStateOf(false) }
     var voiceDialogCharacters by remember { mutableStateOf<List<VoiceAssignment>>(emptyList()) }
-    var voiceDialogOptions by remember { mutableStateOf<List<String>>(emptyList()) }
+    var voiceDialogOptions by remember { mutableStateOf<List<VoiceOption>>(emptyList()) }
+    var voiceDialogError by remember { mutableStateOf<String?>(null) }
     var unsavedChanges by remember { mutableStateOf(false) }
     var showExitDialog by remember { mutableStateOf(false) }
     var editingLineIndex by remember { mutableStateOf<Int?>(null) }
@@ -495,9 +502,14 @@ fun ReadSceneScreen(
                 val localeKey = voiceLocale?.language ?: ""
                 if (localeKey == "en") 0 else 1
             }.thenBy { it.lowercase() })
-        voiceDialogOptions = listOf("Default") + availableVoices
-        voiceDialogCharacters = scriptState.actors
+        voiceDialogOptions = createVoiceOptions(listOf("Default") + availableVoices, allVoices)
+        val sceneCharacterNames = currentScene.lines
+            .map { it.actor.name.uppercase() }
+            .toSet()
+        voiceDialogCharacters = (currentScene.lines.map { it.actor } + scriptState.actors)
             .filter { it != Actor.ACTION }
+            .distinctBy { it.name.uppercase() }
+            .sortedWith(compareByDescending<Actor> { it.name.uppercase() in sceneCharacterNames })
             .map { actor ->
                 val configuredVoice = scriptState.actorVoices[actor.name.uppercase()]
                     ?: scriptState.actorVoices[actor.name]
@@ -509,18 +521,54 @@ fun ReadSceneScreen(
                         configuredVoice.equals("Default", ignoreCase = true) -> "Default"
                         else -> configuredVoice
                     },
-                    enabled = true
+                    enabled = true,
+                    isInCurrentScene = actor.name.uppercase() in sceneCharacterNames
                 )
             }
+        voiceDialogError = null
         showVoiceDialog = true
     }
 
     fun saveCharacterVoiceDialog() {
+        voiceDialogError = null
+        val selectableVoices = voiceDialogOptions
+            .filter { it.kind == VoiceOptionKind.VOICE }
+            .map { it.name }
+        val playableVoiceNames = getPlayableTtsVoices().toSet()
+        val availableVoices = selectableVoices.filter { it in playableVoiceNames }
+        val availableTtsVoices = getAllTtsVoices()
+        val englishVoices = availableVoices.filter { voiceName ->
+            availableTtsVoices.firstOrNull { it.name == voiceName }?.locale?.language == Locale.ENGLISH.language
+        }
+        val resolvedAssignments = mutableListOf<VoiceAssignment>()
+        for (assignment in voiceDialogCharacters
+            .filter { it.enabled && it.name.isNotBlank() }
+        ) {
+            val voicePool = when (assignment.selectedVoice) {
+                RANDOM_ENGLISH_VOICE -> englishVoices
+                RANDOM_ALL_VOICE -> availableVoices
+                else -> null
+            }
+            val selectedVoice = if (voicePool != null) {
+                voicePool.randomOrNull()
+            } else {
+                assignment.selectedVoice
+            }
+            if (selectedVoice == null) {
+                voiceDialogError = if (assignment.selectedVoice == RANDOM_ENGLISH_VOICE) {
+                    "No English voices are available."
+                } else {
+                    "No voices are available."
+                }
+                return
+            }
+            resolvedAssignments.add(assignment.copy(selectedVoice = selectedVoice))
+        }
+
         val updatedScript = cloneScriptState()
         val currentNames = updatedScript.actors.filter { it != Actor.ACTION }.map { it.name.uppercase() }.toSet()
 
-        val incomingNames = voiceDialogCharacters
-            .filter { it.enabled && it.name.isNotBlank() }
+        val incomingNames = resolvedAssignments
             .map { it.name.uppercase() }
             .toSet()
 
@@ -532,7 +580,7 @@ fun ReadSceneScreen(
             updatedScript.mutedCharacterNames.remove(removedName)
         }
 
-        voiceDialogCharacters.filter { it.enabled && it.name.isNotBlank() }.forEach { assignment ->
+        resolvedAssignments.forEach { assignment ->
             val normalizedName = assignment.name.uppercase()
             val actor = updatedScript.actors.firstOrNull { it.name.uppercase() == normalizedName }
                 ?: Actor(normalizedName).also { updatedScript.actors.add(it) }
@@ -793,12 +841,13 @@ fun ReadSceneScreen(
         val filteredLegacyVoices = scriptState.allVoices
             .filter { it.isNotBlank() && it != "Default" }
             .filter { playableVoices.contains(it) || it == scriptState.defaultVoice }
-        voiceDialogOptions = listOf("Default") + (playableVoices + filteredLegacyVoices + listOfNotNull(scriptState.defaultVoice))
+        val availableVoiceNames = (playableVoices + filteredLegacyVoices + listOfNotNull(scriptState.defaultVoice))
             .distinct()
             .filter { it.isNotBlank() && it != "Default" }
             .sortedWith(compareBy<String> { voiceName ->
                 voiceLanguagePriority[voiceName] ?: 1
             }.thenBy { it.lowercase() })
+        voiceDialogOptions = createVoiceOptions(listOf("Default") + availableVoiceNames, allVoices)
         engine.setOnUtteranceProgressListener(ReadSceneTTSListener {
             if (readerActive.value && activeScriptId == script.id && isPlaying) {
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
@@ -1159,7 +1208,15 @@ fun ReadSceneScreen(
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
 
-                    val voiceOptions = voiceDialogOptions.ifEmpty { listOf("Default") }
+                    val voiceOptions = voiceDialogOptions.ifEmpty {
+                        listOf(
+                            VoiceOption("Default", "Default", "Default", VoiceOptionKind.DEFAULT),
+                            VoiceOption(RANDOM_ENGLISH_VOICE, "Random English", "Default", VoiceOptionKind.RANDOM_ENGLISH),
+                            VoiceOption(RANDOM_ALL_VOICE, "Random All", "Default", VoiceOptionKind.RANDOM_ALL)
+                        )
+                    }
+                    val sceneCharacters = voiceDialogCharacters.filter { it.isInCurrentScene }
+                    val scriptCharacters = voiceDialogCharacters.filterNot { it.isInCurrentScene }
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1167,34 +1224,74 @@ fun ReadSceneScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(bottom = 12.dp)
                     ) {
-                        itemsIndexed(voiceDialogCharacters) { _, assignment ->
-                            CharacterVoiceEditorRow(
-                                assignment = assignment,
-                                voiceOptions = voiceOptions,
-                                onNameChange = { newName ->
-                                    val updated = voiceDialogCharacters.map {
-                                        if (it === assignment) it.copy(name = newName.uppercase()) else it
+                        if (sceneCharacters.isNotEmpty()) {
+                            item {
+                                Text(
+                                    text = "Characters in this scene",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                                )
+                            }
+                            itemsIndexed(sceneCharacters) { _, assignment ->
+                                CharacterVoiceEditorRow(
+                                    assignment = assignment,
+                                    voiceOptions = voiceOptions,
+                                    onNameChange = { newName ->
+                                        voiceDialogCharacters = voiceDialogCharacters.map {
+                                            if (it === assignment) it.copy(name = newName.uppercase()) else it
+                                        }
+                                    },
+                                    onVoiceChange = { newVoice ->
+                                        voiceDialogError = null
+                                        voiceDialogCharacters = voiceDialogCharacters.map {
+                                            if (it === assignment) it.copy(selectedVoice = newVoice) else it
+                                        }
+                                    },
+                                    onRemove = {
+                                        voiceDialogCharacters = voiceDialogCharacters.filterNot { it === assignment }
                                     }
-                                    voiceDialogCharacters = updated
-                                },
-                                onVoiceChange = { newVoice ->
-                                    val updated = voiceDialogCharacters.map {
-                                        if (it === assignment) it.copy(selectedVoice = newVoice) else it
+                                )
+                            }
+                        }
+                        if (scriptCharacters.isNotEmpty()) {
+                            item {
+                                Text(
+                                    text = "Characters in the script",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                                )
+                            }
+                            itemsIndexed(scriptCharacters) { _, assignment ->
+                                CharacterVoiceEditorRow(
+                                    assignment = assignment,
+                                    voiceOptions = voiceOptions,
+                                    onNameChange = { newName ->
+                                        voiceDialogCharacters = voiceDialogCharacters.map {
+                                            if (it === assignment) it.copy(name = newName.uppercase()) else it
+                                        }
+                                    },
+                                    onVoiceChange = { newVoice ->
+                                        voiceDialogError = null
+                                        voiceDialogCharacters = voiceDialogCharacters.map {
+                                            if (it === assignment) it.copy(selectedVoice = newVoice) else it
+                                        }
+                                    },
+                                    onRemove = {
+                                        voiceDialogCharacters = voiceDialogCharacters.filterNot { it === assignment }
                                     }
-                                    voiceDialogCharacters = updated
-                                },
-                                onRemove = {
-                                    voiceDialogCharacters = voiceDialogCharacters.filterNot { it === assignment }
-                                }
-                            )
+                                )
+                            }
                         }
                         item {
                             Button(
                                 onClick = {
                                     voiceDialogCharacters = voiceDialogCharacters + VoiceAssignment(
                                         name = "",
-                                        selectedVoice = voiceOptions.firstOrNull() ?: "",
-                                        enabled = true
+                                        selectedVoice = "Default",
+                                        enabled = true,
+                                        isInCurrentScene = false
                                     )
                                 },
                                 modifier = Modifier.fillMaxWidth()
@@ -1204,6 +1301,14 @@ fun ReadSceneScreen(
                         }
                     }
 
+                    voiceDialogError?.let { error ->
+                        Text(
+                            text = error,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
@@ -1300,22 +1405,106 @@ fun ReadSceneScreen(
     }
 }
 
+private const val RANDOM_ENGLISH_VOICE = "__random_english__"
+private const val RANDOM_ALL_VOICE = "__random_all__"
+
+private enum class VoiceOptionKind {
+    DEFAULT,
+    RANDOM_ENGLISH,
+    RANDOM_ALL,
+    VOICE
+}
+
+private data class VoiceOption(
+    val name: String,
+    val label: String,
+    val language: String,
+    val kind: VoiceOptionKind
+)
+
+private fun createVoiceOptions(
+    voiceNames: List<String>,
+    voices: List<android.speech.tts.Voice>
+): List<VoiceOption> {
+    val voicesByName = voices.associateBy { it.name }
+    val voiceDetails = voiceNames
+        .distinct()
+        .filter {
+            it.isNotBlank() &&
+                it != "Default" &&
+                it != RANDOM_ENGLISH_VOICE &&
+                it != RANDOM_ALL_VOICE
+        }
+        .map { name ->
+            val voice = voicesByName[name]
+            val localeLabel = voice?.locale?.getDisplayName(Locale.getDefault())
+                ?.takeIf { it.isNotBlank() }
+                ?: "Voice"
+            val language = voice?.locale?.getDisplayLanguage(Locale.getDefault())
+                ?.takeIf { it.isNotBlank() }
+                ?: "Other"
+            val isEnglish = voice?.locale?.language == Locale.ENGLISH.language
+            Triple(name, localeLabel, if (isEnglish) "English" else language)
+        }
+    val specialOptions = if (voiceNames.contains("Default")) {
+        listOf(
+            VoiceOption("Default", "Default", "Default", VoiceOptionKind.DEFAULT),
+            VoiceOption(RANDOM_ENGLISH_VOICE, "Random English", "Default", VoiceOptionKind.RANDOM_ENGLISH),
+            VoiceOption(RANDOM_ALL_VOICE, "Random All", "Default", VoiceOptionKind.RANDOM_ALL)
+        )
+    } else {
+        emptyList()
+    }
+
+    return specialOptions + voiceDetails
+        .groupBy { (_, localeLabel, language) -> localeLabel to language }
+        .values
+        .flatMap { options ->
+            options.mapIndexed { index, (name, localeLabel, language) ->
+                val voiceNumber = Regex("(?:_|-)(\\d+)(?:-|$)")
+                    .find(name.lowercase(Locale.ROOT))
+                    ?.groupValues
+                    ?.get(1)
+                    ?: (index + 1).takeIf { options.size > 1 }?.toString()
+                val variantLabel = "Voice" + (voiceNumber?.let { " $it" } ?: "")
+                VoiceOption(name, "$localeLabel · $variantLabel", language, VoiceOptionKind.VOICE)
+            }
+        }.sortedWith(compareBy<VoiceOption> {
+            when {
+                it.language == "Default" -> 0
+                it.language == "English" -> 1
+                else -> 2
+            }
+        }.thenBy { it.language.lowercase(Locale.getDefault()) }
+            .thenBy { it.kind.ordinal }
+            .thenBy { it.label.lowercase(Locale.getDefault()) })
+}
+
 private data class VoiceAssignment(
     var name: String,
     var selectedVoice: String,
-    var enabled: Boolean = true
+    var enabled: Boolean = true,
+    val isInCurrentScene: Boolean = false
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CharacterVoiceEditorRow(
     assignment: VoiceAssignment,
-    voiceOptions: List<String>,
+    voiceOptions: List<VoiceOption>,
     onNameChange: (String) -> Unit,
     onVoiceChange: (String) -> Unit,
     onRemove: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val selectedVoiceBringIntoViewRequester = remember { BringIntoViewRequester() }
+    val selectedVoiceOption = voiceOptions.firstOrNull { it.name == assignment.selectedVoice }
+    LaunchedEffect(expanded, selectedVoiceOption?.name) {
+        if (expanded && selectedVoiceOption != null) {
+            withFrameNanos { }
+            selectedVoiceBringIntoViewRequester.bringIntoView()
+        }
+    }
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
@@ -1334,7 +1523,7 @@ private fun CharacterVoiceEditorRow(
             modifier = Modifier.weight(1f)
         ) {
             OutlinedTextField(
-                value = assignment.selectedVoice,
+                value = selectedVoiceOption?.label ?: assignment.selectedVoice,
                 onValueChange = { onVoiceChange(it) },
                 label = { Text("Voice") },
                 singleLine = true,
@@ -1357,16 +1546,41 @@ private fun CharacterVoiceEditorRow(
                         }
                     )
                 } else {
-                    voiceOptions.forEach { voice ->
-                        DropdownMenuItem(
-                            text = { Text(voice) },
-                            onClick = {
-                                onVoiceChange(voice)
-                                expanded = false
+                    voiceOptions
+                        .groupBy { it.language }
+                        .forEach { (language, groupedOptions) ->
+                            if (groupedOptions.isNotEmpty()) {
+                                HorizontalDivider()
+                                Text(
+                                    text = language,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
+                                groupedOptions.forEach { option ->
+                                    val isSelected = option.name == assignment.selectedVoice
+                                    DropdownMenuItem(
+                                        text = { Text(option.label) },
+                                        trailingIcon = if (isSelected) {
+                                            { Icon(Icons.Default.Check, contentDescription = "Selected") }
+                                        } else {
+                                            null
+                                        },
+                                        modifier = if (isSelected) {
+                                            Modifier
+                                                .background(MaterialTheme.colorScheme.secondaryContainer)
+                                                .bringIntoViewRequester(selectedVoiceBringIntoViewRequester)
+                                        } else {
+                                            Modifier
+                                        },
+                                        onClick = {
+                                            onVoiceChange(option.name)
+                                            expanded = false
+                                        }
+                                    )
+                                }
                             }
-                        )
-                    }
-
+                        }
                 }
             }
         }
