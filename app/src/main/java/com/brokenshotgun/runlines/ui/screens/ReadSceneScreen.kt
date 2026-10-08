@@ -8,19 +8,21 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Redo
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -65,6 +67,8 @@ fun ReadSceneScreen(
     var isPlaying by remember { mutableStateOf(false) }
     var stopAtSceneEnd by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
+    var showSceneSelector by remember { mutableStateOf(false) }
+    var sceneSearchQuery by remember { mutableStateOf("") }
     var showVoiceDialog by remember { mutableStateOf(false) }
     var voiceDialogCharacters by remember { mutableStateOf<List<VoiceAssignment>>(emptyList()) }
     var voiceDialogOptions by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -177,6 +181,21 @@ fun ReadSceneScreen(
             playing = false,
             keepNotificationVisible = false
         )
+    }
+
+    fun selectScene(index: Int) {
+        if (isPlaying) {
+            stopPlayback()
+        }
+        selectedSceneIndex = index
+        currentLineIndex = -1
+        editingLineIndex = null
+        resetSceneEditHistory()
+    }
+
+    fun sceneLabel(index: Int): String {
+        val scene = scriptState.scenes[index]
+        return "Scene ${index + 1}${scene.name?.let { " • $it" } ?: ""}"
     }
 
     fun wordCount(text: String): Int {
@@ -749,31 +768,25 @@ fun ReadSceneScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             item {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(bottom = 12.dp)
+                OutlinedButton(
+                    onClick = {
+                        sceneSearchQuery = ""
+                        showSceneSelector = true
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp)
                 ) {
-                    itemsIndexed(scriptState.scenes) { index, scene ->
-                        val selected = index == selectedSceneIndex
-                        FilterChip(
-                            selected = selected,
-                            onClick = {
-                                if (isPlaying) {
-                                    stopPlayback()
-                                }
-                                selectedSceneIndex = index
-                                currentLineIndex = -1
-                                editingLineIndex = null
-                                resetSceneEditHistory()
-                            },
-                            label = {
-                                Text(
-                                    text = "Scene ${index + 1}${scene.name?.let { " • ${it}" } ?: ""}",
-                                    maxLines = 1
-                                )
-                            }
-                        )
-                    }
+                    Text(
+                        text = sceneLabel(selectedSceneIndex),
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Start,
+                        maxLines = 1
+                    )
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = "Choose scene"
+                    )
                 }
             }
 
@@ -828,6 +841,93 @@ fun ReadSceneScreen(
                 )
             }
         }
+    }
+
+    if (showSceneSelector) {
+        val normalizedQuery = sceneSearchQuery.trim()
+        val matchingScenes = scriptState.scenes.indices.filter { index ->
+            val scene = scriptState.scenes[index]
+            val searchableText = "Scene ${index + 1} ${scene.number} ${scene.name.orEmpty()}"
+            searchableText.contains(normalizedQuery, ignoreCase = true)
+        }
+        val sceneListState = rememberLazyListState()
+        val selectedScenePosition = matchingScenes.indexOf(selectedSceneIndex)
+
+        LaunchedEffect(matchingScenes, selectedSceneIndex) {
+            if (selectedScenePosition >= 0) {
+                sceneListState.scrollToItem(selectedScenePosition)
+            }
+        }
+
+        AlertDialog(
+            onDismissRequest = { showSceneSelector = false },
+            title = { Text("Select scene") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = sceneSearchQuery,
+                        onValueChange = { sceneSearchQuery = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("Search scenes") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = null
+                            )
+                        }
+                    )
+                    if (matchingScenes.isEmpty()) {
+                        Text(
+                            text = "No scenes found",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(vertical = 16.dp)
+                        )
+                    } else {
+                        LazyColumn(
+                            state = sceneListState,
+                            modifier = Modifier.heightIn(max = 360.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            itemsIndexed(matchingScenes) { _, index ->
+                                val selected = index == selectedSceneIndex
+                                TextButton(
+                                    onClick = {
+                                        selectScene(index)
+                                        showSceneSelector = false
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = sceneLabel(index),
+                                        modifier = Modifier.weight(1f),
+                                        textAlign = TextAlign.Start,
+                                        color = if (selected) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface
+                                        },
+                                        maxLines = 1
+                                    )
+                                    if (selected) {
+                                        Text(
+                                            text = "Selected",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showSceneSelector = false }) {
+                    Text("Close")
+                }
+            }
+        )
     }
 
     if (showExitDialog) {
