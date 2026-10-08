@@ -34,4 +34,15 @@ class ScriptPreferencesTest {
 
         assertTrue(restoredScript.mutedCharacterNames.isEmpty())
     }
+
+    @Test
+    fun loadedSceneStateIsNotPersisted() {
+        val script = Script("Test script").apply {
+            scenes.add(Scene(name = "Deferred", isLoaded = false))
+        }
+
+        val restoredScript = gson.fromJson(gson.toJson(script), Script::class.java)
+
+        assertTrue(restoredScript.scenes.single().isLoaded)
+    }
 }

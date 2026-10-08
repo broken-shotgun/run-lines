@@ -13,4 +13,4 @@ app-release.apk
 /.vscode
 
 runlines.keystore.jks
-.claude/skills/android-build-test/SKILL.md
+/.claude/skills/android-build-test/SKILL.md

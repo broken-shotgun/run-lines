@@ -1,6 +1,7 @@
 package com.brokenshotgun.runlines.domain.usecase
 
 import com.brokenshotgun.runlines.domain.model.Script
+import com.brokenshotgun.runlines.domain.model.Scene
 import com.brokenshotgun.runlines.domain.repository.ScriptContentParser
 import com.brokenshotgun.runlines.domain.repository.ScriptRepository
 
@@ -9,7 +10,10 @@ class GetScriptsUseCase(private val repository: ScriptRepository) {
 }
 
 class GetScriptUseCase(private val repository: ScriptRepository) {
-    suspend operator fun invoke(id: Long): Script? = repository.getScript(id)
+    suspend operator fun invoke(id: Long): Script? = repository.getScriptSummary(id)
+
+    suspend fun getScene(scriptId: Long, sceneIndex: Int): Scene? =
+        repository.getScene(scriptId, sceneIndex)
 }
 
 class CreateScriptUseCase(private val repository: ScriptRepository) {

@@ -11,7 +11,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -48,7 +51,8 @@ fun ReadSceneScreen(
     script: Script,
     sceneIndex: Int,
     onBack: () -> Unit,
-    onSaveScript: (Script) -> Unit = {}
+    onSaveScript: (Script) -> Unit = {},
+    onLoadScene: suspend (Int) -> Scene?
 ) {
     var scriptState by remember(script.id, script.name, script.scenes.size) {
         mutableStateOf(script)
@@ -85,6 +89,8 @@ fun ReadSceneScreen(
     val maxHistoryActions = 500
     var sceneUndoStack by remember(selectedSceneIndex) { mutableStateOf<List<List<Line>>>(emptyList()) }
     var sceneRedoStack by remember(selectedSceneIndex) { mutableStateOf<List<List<Line>>>(emptyList()) }
+    var loadingSceneIndices by remember(script.id) { mutableStateOf<Set<Int>>(emptySet()) }
+    var sceneLoadError by remember(script.id) { mutableStateOf<String?>(null) }
 
     fun pushUndoState(snapshot: List<Line>) {
         sceneUndoStack = (sceneUndoStack + listOf(snapshot)).takeLast(maxHistoryActions)
@@ -127,7 +133,8 @@ fun ReadSceneScreen(
                             order = line.order,
                             characterExtensions = line.characterExtensions.toMutableList()
                         )
-                    }.toMutableList()
+                    }.toMutableList(),
+                    isLoaded = scene.isLoaded
                 )
             }.toMutableList(),
             allVoices = scriptState.allVoices.toMutableList(),
@@ -136,11 +143,38 @@ fun ReadSceneScreen(
         ).apply {
             defaultVoice = scriptState.defaultVoice
             mutedCharacterNames = scriptState.mutedCharacterNames.toMutableSet()
+            sceneActorReplacements.putAll(scriptState.sceneActorReplacements)
         }
     }
 
     fun refreshScriptState() {
         scriptState = cloneScriptState()
+    }
+
+    fun loadScene(index: Int, onLoaded: (() -> Unit)? = null) {
+        val scene = scriptState.scenes.getOrNull(index) ?: return
+        if (scene.isLoaded) {
+            onLoaded?.invoke()
+            return
+        }
+        if (index in loadingSceneIndices) return
+
+        playbackScope.launch {
+            loadingSceneIndices = loadingSceneIndices + index
+            sceneLoadError = null
+            try {
+                val loadedScene = onLoadScene(index)
+                    ?: error("Scene ${index + 1} could not be found")
+                val scenes = scriptState.scenes.toMutableList()
+                scenes[index] = loadedScene
+                scriptState = scriptState.copy(scenes = scenes)
+                onLoaded?.invoke()
+            } catch (error: Exception) {
+                sceneLoadError = error.message ?: "Could not load scene"
+            } finally {
+                loadingSceneIndices = loadingSceneIndices - index
+            }
+        }
     }
 
     fun isEditingDirty(): Boolean {
@@ -199,6 +233,10 @@ fun ReadSceneScreen(
         currentLineIndex = -1
         editingLineIndex = null
         resetSceneEditHistory()
+    }
+
+    LaunchedEffect(script.id, selectedSceneIndex) {
+        loadScene(selectedSceneIndex)
     }
 
     fun sceneLabel(index: Int): String {
@@ -408,13 +446,11 @@ fun ReadSceneScreen(
                     locale != null &&
                     !voice.isNetworkConnectionRequired
             }
+            .distinctBy { it.name }
+            .sortedWith(compareBy<android.speech.tts.Voice> {
+                if (it.locale.language == "en") 0 else 1
+            }.thenBy { it.name.lowercase() })
             .mapNotNull { it.name }
-            .distinct()
-            .sortedWith(compareBy<String> { voiceName ->
-                val voiceLocale = allVoices.firstOrNull { it.name == voiceName }?.locale
-                val localeKey = voiceLocale?.language ?: ""
-                if (localeKey == "en") 0 else 1
-            }.thenBy { it.lowercase() })
             .toList()
     }
 
@@ -491,16 +527,9 @@ fun ReadSceneScreen(
         val removedNames = currentNames - incomingNames
         removedNames.forEach { removedName ->
             val actorToRemove = updatedScript.actors.firstOrNull { it.name.uppercase() == removedName } ?: return@forEach
-            updatedScript.actors.remove(actorToRemove)
+            updatedScript.replaceActor(actorToRemove, Actor.ACTION)
             updatedScript.actorVoices.remove(removedName)
             updatedScript.mutedCharacterNames.remove(removedName)
-            updatedScript.scenes.forEach { scene ->
-                scene.lines.forEach { line ->
-                    if (line.actor.name.uppercase() == removedName) {
-                        line.actor = Actor.ACTION
-                    }
-                }
-            }
         }
 
         voiceDialogCharacters.filter { it.enabled && it.name.isNotBlank() }.forEach { assignment ->
@@ -560,6 +589,12 @@ fun ReadSceneScreen(
         mutedLineDelayJob = null
         val validSceneIndex = targetSceneIndex.coerceIn(0, scriptState.scenes.lastIndex.coerceAtLeast(0))
         val targetScene = scriptState.scenes.getOrNull(validSceneIndex) ?: return
+        if (!targetScene.isLoaded) {
+            loadScene(validSceneIndex) {
+                speakLineAt(validSceneIndex, targetLineIndex)
+            }
+            return
+        }
 
         if (targetLineIndex < targetScene.lines.size) {
             selectedSceneIndex = validSceneIndex
@@ -711,14 +746,17 @@ fun ReadSceneScreen(
         )
     }
 
-    DisposableEffect(script.id) {
+    LaunchedEffect(script.id) {
+        delay(250)
         val engine = TextToSpeech(context) { status ->
             if (status == TextToSpeech.SUCCESS && readerActive.value) {
                 Log.d("ReadSceneScreen", "TTS Initialized for script ${script.id}")
             }
         }
         textToSpeech = engine
-        onDispose {
+        try {
+            awaitCancellation()
+        } finally {
             engine.stop()
             engine.shutdown()
             if (textToSpeech === engine) {
@@ -728,20 +766,40 @@ fun ReadSceneScreen(
     }
 
     LaunchedEffect(textToSpeech, script.id) {
-        val playableVoices = getPlayableTtsVoices()
+        val engine = textToSpeech ?: return@LaunchedEffect
+        val (allVoices, playableVoices, voiceLanguagePriority) = withContext(Dispatchers.IO) {
+            try {
+                val voices = engine.voices?.toList() ?: emptyList()
+                val playable = voices
+                    .asSequence()
+                    .filter { voice ->
+                        !voice.name.isNullOrBlank() &&
+                            !voice.isNetworkConnectionRequired
+                    }
+                    .distinctBy { it.name }
+                    .sortedWith(compareBy<android.speech.tts.Voice> {
+                        if (it.locale.language == "en") 0 else 1
+                    }.thenBy { it.name.lowercase() })
+                    .mapNotNull { it.name }
+                    .toList()
+                val languagePriority = voices.associate { voice ->
+                    voice.name to if (voice.locale.language == "en") 0 else 1
+                }
+                Triple(voices, playable, languagePriority)
+            } catch (_: IllegalStateException) {
+                Triple(emptyList(), emptyList(), emptyMap())
+            }
+        }
         val filteredLegacyVoices = scriptState.allVoices
             .filter { it.isNotBlank() && it != "Default" }
             .filter { playableVoices.contains(it) || it == scriptState.defaultVoice }
-        val allVoices = getAllTtsVoices()
         voiceDialogOptions = listOf("Default") + (playableVoices + filteredLegacyVoices + listOfNotNull(scriptState.defaultVoice))
             .distinct()
             .filter { it.isNotBlank() && it != "Default" }
             .sortedWith(compareBy<String> { voiceName ->
-                val voiceLocale = allVoices.firstOrNull { it.name == voiceName }?.locale
-                val localeKey = voiceLocale?.language ?: ""
-                if (localeKey == "en") 0 else 1
+                voiceLanguagePriority[voiceName] ?: 1
             }.thenBy { it.lowercase() })
-        textToSpeech?.setOnUtteranceProgressListener(ReadSceneTTSListener {
+        engine.setOnUtteranceProgressListener(ReadSceneTTSListener {
             if (readerActive.value && activeScriptId == script.id && isPlaying) {
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
                     if (!readerActive.value || activeScriptId != script.id || !isPlaying) {
@@ -831,7 +889,9 @@ fun ReadSceneScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 FloatingActionButton(
-                    onClick = { addNewLineToBottom() }
+                    onClick = {
+                        if (currentScene.isLoaded) addNewLineToBottom()
+                    }
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
@@ -840,7 +900,9 @@ fun ReadSceneScreen(
                 }
 
                 FloatingActionButton(
-                    onClick = { togglePlayback() }
+                    onClick = {
+                        if (currentScene.isLoaded) togglePlayback()
+                    }
                 ) {
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
@@ -890,7 +952,26 @@ fun ReadSceneScreen(
                 )
             }
 
-            itemsIndexed(currentScene.lines) { index, line ->
+            if (!currentScene.isLoaded) {
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        if (selectedSceneIndex in loadingSceneIndices) {
+                            CircularProgressIndicator()
+                        } else {
+                            Text(sceneLoadError ?: "Scene not loaded")
+                            TextButton(onClick = { loadScene(selectedSceneIndex) }) {
+                                Text("Retry")
+                            }
+                        }
+                    }
+                }
+            } else itemsIndexed(currentScene.lines) { index, line ->
                 LineEditRow(
                     line = line,
                     isSelected = index == currentLineIndex,

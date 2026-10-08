@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.brokenshotgun.runlines.domain.model.Script
+import com.brokenshotgun.runlines.domain.model.Scene
 import com.brokenshotgun.runlines.domain.repository.ScriptRepository
 import com.brokenshotgun.runlines.domain.usecase.GetScriptUseCase
 import com.brokenshotgun.runlines.domain.usecase.UpdateScriptUseCase
@@ -48,6 +49,9 @@ class ReaderViewModel(repository: ScriptRepository) : ViewModel() {
             }
         }
     }
+
+    suspend fun loadScene(scriptId: Long, sceneIndex: Int): Scene? =
+        getScript.getScene(scriptId, sceneIndex)
 
     fun saveScript(script: Script) {
         viewModelScope.launch {

@@ -5,7 +5,8 @@ import kotlin.jvm.JvmOverloads
 data class Scene @JvmOverloads constructor(
     var name: String? = null,
     var number: Int = 0,
-    val lines: MutableList<Line> = mutableListOf()
+    val lines: MutableList<Line> = mutableListOf(),
+    @Transient var isLoaded: Boolean = true
 ) {
 
     fun addLine(line: Line) {

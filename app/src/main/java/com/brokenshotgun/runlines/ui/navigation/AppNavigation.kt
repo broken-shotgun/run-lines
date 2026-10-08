@@ -6,14 +6,21 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavBackStack
@@ -50,74 +57,117 @@ fun AppNavigation(
         AppRoute.Home
     }
     val backStack: NavBackStack<NavKey> = rememberNavBackStack(initialRoute)
+    var openingScriptId by remember { mutableStateOf<Long?>(null) }
 
-    NavDisplay(
-        backStack = backStack,
-        onBack = {
-            if (backStack.size > 1) {
-                backStack.removeLastOrNull()
-            }
-        },
-        entryProvider = entryProvider {
-            entry<AppRoute.Home> {
-                val homeViewModel: HomeViewModel = viewModel(
-                    factory = HomeViewModel.factory(appContainer.repository, appContainer.exporter)
-                )
-                HomeScreen(
-                    viewModel = homeViewModel,
-                    onImportScript = onImportScript,
-                    onScriptSelected = { script ->
-                        backStack.add(AppRoute.ReadScene(script.id, 0))
-                    }
-                )
-            }
+    LaunchedEffect(openingScriptId) {
+        val scriptId = openingScriptId ?: return@LaunchedEffect
+        withFrameNanos { }
+        if (backStack.lastOrNull() == AppRoute.Home) {
+            backStack.add(AppRoute.ReadScene(scriptId, 0))
+        }
+    }
 
-            entry<AppRoute.ReadScene> { key ->
-                val readerViewModel: ReaderViewModel = viewModel(
-                    factory = ReaderViewModel.factory(appContainer.repository)
-                )
-                val readerState by readerViewModel.uiState.collectAsStateWithLifecycle()
-                LaunchedEffect(key.scriptId) {
-                    readerViewModel.loadScript(key.scriptId)
+    Box {
+        NavDisplay(
+            backStack = backStack,
+            onBack = {
+                if (backStack.size > 1) {
+                    backStack.removeLastOrNull()
+                }
+            },
+            entryProvider = entryProvider {
+                entry<AppRoute.Home> {
+                    val homeViewModel: HomeViewModel = viewModel(
+                        factory = HomeViewModel.factory(appContainer.repository, appContainer.exporter)
+                    )
+                    HomeScreen(
+                        viewModel = homeViewModel,
+                        onImportScript = onImportScript,
+                        onScriptSelected = { script ->
+                            openingScriptId = script.id
+                        }
+                    )
                 }
 
-                when {
-                    readerState.script != null -> ReadSceneScreen(
-                        script = readerState.script!!,
-                        sceneIndex = key.sceneIndex,
-                        onBack = {
-                            if (backStack.size > 1) {
-                                backStack.removeLastOrNull()
-                            }
-                        },
-                        onSaveScript = readerViewModel::saveScript
+                entry<AppRoute.ReadScene> { key ->
+                    val readerViewModel: ReaderViewModel = viewModel(
+                        factory = ReaderViewModel.factory(appContainer.repository)
                     )
-                    readerState.isLoading -> Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
+                    val readerState by readerViewModel.uiState.collectAsStateWithLifecycle()
+                    LaunchedEffect(key.scriptId) {
+                        readerViewModel.loadScript(key.scriptId)
                     }
-                    else -> Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(readerState.errorMessage ?: "Could not open script")
-                        TextButton(
-                            onClick = {
+                    LaunchedEffect(key.scriptId, readerState.script, readerState.isLoading) {
+                        if (openingScriptId == key.scriptId) {
+                            if (readerState.script != null) {
+                                withFrameNanos { }
+                                openingScriptId = null
+                            } else if (!readerState.isLoading) {
+                                openingScriptId = null
+                            }
+                        }
+                    }
+
+                    when {
+                        readerState.script != null -> ReadSceneScreen(
+                            script = readerState.script!!,
+                            sceneIndex = key.sceneIndex,
+                            onBack = {
                                 if (backStack.size > 1) {
                                     backStack.removeLastOrNull()
                                 }
+                            },
+                            onSaveScript = readerViewModel::saveScript,
+                            onLoadScene = { index ->
+                                readerViewModel.loadScene(key.scriptId, index)
                             }
+                        )
+                        readerState.isLoading -> Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text("Back")
+                            CircularProgressIndicator()
+                        }
+                        else -> Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(readerState.errorMessage ?: "Could not open script")
+                            TextButton(
+                                onClick = {
+                                    if (backStack.size > 1) {
+                                        backStack.removeLastOrNull()
+                                    }
+                                }
+                            ) {
+                                Text("Back")
+                            }
                         }
                     }
                 }
             }
+        )
+
+        if (openingScriptId != null) {
+            Dialog(onDismissRequest = {}) {
+                Surface(
+                    shape = MaterialTheme.shapes.extraLarge,
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 6.dp
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        CircularProgressIndicator()
+                        Text("Opening script...")
+                    }
+                }
+            }
         }
-    )
+    }
 }

@@ -4,6 +4,8 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import com.brokenshotgun.runlines.domain.model.Actor
+import com.brokenshotgun.runlines.domain.model.Scene
 import com.brokenshotgun.runlines.domain.model.Script
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -26,6 +28,7 @@ class ScriptDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
     }
 
     private val gson: Gson = GsonBuilder().create()
+    private val scriptJsonReader = ScriptJsonReader(gson)
 
     fun insertScript(script: Script) {
         val db = writableDatabase
@@ -47,9 +50,38 @@ class ScriptDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
 
     fun updateScript(script: Script) {
         val db = writableDatabase
+        val existingScript = getFullScript(script.id)
+            ?: error("Script ${script.id} was not found for update")
+        val mergedScript = script.copy(
+            scenes = existingScript.scenes.mapIndexed { index, existingScene ->
+                script.scenes.getOrNull(index)?.takeIf { it.isLoaded } ?: run {
+                    val replacements = script.sceneActorReplacements
+                    if (replacements.isEmpty()) {
+                        existingScene
+                    } else {
+                        val replacementLines = existingScene.lines.map { line ->
+                            val replacement = replacements[line.actor.name.uppercase()]
+                            if (replacement == null) line else line.copy(
+                                actor = Actor(replacement)
+                            )
+                        }
+                        if (replacementLines == existingScene.lines) {
+                            existingScene
+                        } else {
+                            existingScene.copy(lines = replacementLines.toMutableList())
+                        }
+                    }
+                }
+            }.toMutableList()
+        ).apply {
+            defaultVoice = script.defaultVoice
+            if (script.scenes.size > existingScript.scenes.size) {
+                scenes.addAll(script.scenes.drop(existingScript.scenes.size))
+            }
+        }
 
         val values = ContentValues().apply {
-            put(ScriptEntry.COLUMN_NAME_SCRIPT_JSON, serialize(script))
+            put(ScriptEntry.COLUMN_NAME_SCRIPT_JSON, serialize(mergedScript))
         }
 
         val selection = "${android.provider.BaseColumns._ID} = ?"
@@ -110,7 +142,49 @@ class ScriptDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         return results
     }
 
-    fun getScript(id: Long): Script? {
+    fun getScriptSummary(id: Long): Script? {
+        val projection = arrayOf(ScriptEntry.COLUMN_NAME_SCRIPT_JSON)
+        val selection = "${android.provider.BaseColumns._ID} = ?"
+        val selectionArgs = arrayOf(id.toString())
+        return readableDatabase.query(
+            ScriptEntry.TABLE_NAME,
+            projection,
+            selection,
+            selectionArgs,
+            null,
+            null,
+            null
+        ).use { cursor ->
+            if (!cursor.moveToFirst()) {
+                null
+            } else {
+                scriptJsonReader.readSummary(cursor.getString(0), id)
+            }
+        }
+    }
+
+    fun getScene(scriptId: Long, sceneIndex: Int): Scene? {
+        val projection = arrayOf(ScriptEntry.COLUMN_NAME_SCRIPT_JSON)
+        val selection = "${android.provider.BaseColumns._ID} = ?"
+        val selectionArgs = arrayOf(scriptId.toString())
+        return readableDatabase.query(
+            ScriptEntry.TABLE_NAME,
+            projection,
+            selection,
+            selectionArgs,
+            null,
+            null,
+            null
+        ).use { cursor ->
+            if (!cursor.moveToFirst()) {
+                null
+            } else {
+                scriptJsonReader.readScene(cursor.getString(0), sceneIndex)
+            }
+        }
+    }
+
+    private fun getFullScript(id: Long): Script? {
         val projection = arrayOf(ScriptEntry.COLUMN_NAME_SCRIPT_JSON)
         val selection = "${android.provider.BaseColumns._ID} = ?"
         val selectionArgs = arrayOf(id.toString())

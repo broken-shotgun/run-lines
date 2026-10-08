@@ -19,6 +19,12 @@ data class Script @JvmOverloads constructor(
     private var persistedMutedCharacterNames: MutableSet<String>? = mutableSetOf()
 ) {
     var defaultVoice: String? = null
+    @Transient
+    private var pendingSceneActorReplacements: MutableMap<String, String>? = null
+
+    val sceneActorReplacements: MutableMap<String, String>
+        get() = pendingSceneActorReplacements
+            ?: mutableMapOf<String, String>().also { pendingSceneActorReplacements = it }
 
     var mutedCharacterNames: MutableSet<String>
         get() = persistedMutedCharacterNames
@@ -42,6 +48,12 @@ data class Script @JvmOverloads constructor(
     fun replaceActor(actor: Actor, replacement: Actor) {
         if (actor == Actor.ACTION) return
         actors.remove(actor)
+        sceneActorReplacements.entries.forEach { entry ->
+            if (entry.value.equals(actor.name, ignoreCase = true)) {
+                entry.setValue(replacement.name)
+            }
+        }
+        sceneActorReplacements[actor.name.uppercase()] = replacement.name
         for (scene in scenes) {
             scene.replaceActor(actor, replacement)
         }
