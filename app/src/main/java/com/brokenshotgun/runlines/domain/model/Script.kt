@@ -1,5 +1,6 @@
 package com.brokenshotgun.runlines.domain.model
 
+import com.google.gson.annotations.SerializedName
 import kotlin.jvm.JvmOverloads
 
 data class Script @JvmOverloads constructor(
@@ -13,9 +14,18 @@ data class Script @JvmOverloads constructor(
     val scenes: MutableList<Scene> = mutableListOf(),
     val allVoices: MutableList<String> = mutableListOf(),
     val actorVoices: MutableMap<String, String> = mutableMapOf(),
-    var id: Long = -1L
+    var id: Long = -1L,
+    @SerializedName("mutedCharacterNames")
+    private var persistedMutedCharacterNames: MutableSet<String>? = mutableSetOf()
 ) {
     var defaultVoice: String? = null
+
+    var mutedCharacterNames: MutableSet<String>
+        get() = persistedMutedCharacterNames
+            ?: mutableSetOf<String>().also { persistedMutedCharacterNames = it }
+        set(value) {
+            persistedMutedCharacterNames = value
+        }
 
     companion object {
         fun create(name: String): Script {

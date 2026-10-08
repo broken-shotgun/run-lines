@@ -8,7 +8,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -52,6 +54,7 @@ fun ReadSceneScreen(
         mutableStateOf(script)
     }
     val context = LocalContext.current
+    val playbackScope = rememberCoroutineScope()
     val safeSceneIndex = sceneIndex.coerceIn(0, scriptState.scenes.lastIndex.coerceAtLeast(0))
     var selectedSceneIndex by remember(scriptState.scenes.size, safeSceneIndex) {
         mutableIntStateOf(safeSceneIndex)
@@ -63,11 +66,13 @@ fun ReadSceneScreen(
     val readerActive = remember(script.id) { mutableStateOf(true) }
     var currentLineIndex by remember { mutableIntStateOf(-1) }
     var isPlaying by remember { mutableStateOf(false) }
+    var mutedLineDelayJob by remember { mutableStateOf<Job?>(null) }
     var stopAtSceneEnd by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
     var showSceneSelector by remember { mutableStateOf(false) }
     var sceneSearchQuery by remember { mutableStateOf("") }
     var showVoiceDialog by remember { mutableStateOf(false) }
+    var showCharacterLinesDialog by remember { mutableStateOf(false) }
     var voiceDialogCharacters by remember { mutableStateOf<List<VoiceAssignment>>(emptyList()) }
     var voiceDialogOptions by remember { mutableStateOf<List<String>>(emptyList()) }
     var unsavedChanges by remember { mutableStateOf(false) }
@@ -130,6 +135,7 @@ fun ReadSceneScreen(
             id = scriptState.id
         ).apply {
             defaultVoice = scriptState.defaultVoice
+            mutedCharacterNames = scriptState.mutedCharacterNames.toMutableSet()
         }
     }
 
@@ -169,6 +175,8 @@ fun ReadSceneScreen(
     }
 
     fun stopPlayback() {
+        mutedLineDelayJob?.cancel()
+        mutedLineDelayJob = null
         textToSpeech?.stop()
         isPlaying = false
         currentLineIndex = -1
@@ -245,6 +253,8 @@ fun ReadSceneScreen(
     }
 
     fun pausePlayback() {
+        mutedLineDelayJob?.cancel()
+        mutedLineDelayJob = null
         textToSpeech?.stop()
         isPlaying = false
         TtsPlaybackController.setPlayingState(
@@ -483,6 +493,7 @@ fun ReadSceneScreen(
             val actorToRemove = updatedScript.actors.firstOrNull { it.name.uppercase() == removedName } ?: return@forEach
             updatedScript.actors.remove(actorToRemove)
             updatedScript.actorVoices.remove(removedName)
+            updatedScript.mutedCharacterNames.remove(removedName)
             updatedScript.scenes.forEach { scene ->
                 scene.lines.forEach { line ->
                     if (line.actor.name.uppercase() == removedName) {
@@ -545,6 +556,8 @@ fun ReadSceneScreen(
     }
 
     fun speakLineAt(targetSceneIndex: Int, targetLineIndex: Int) {
+        mutedLineDelayJob?.cancel()
+        mutedLineDelayJob = null
         val validSceneIndex = targetSceneIndex.coerceIn(0, scriptState.scenes.lastIndex.coerceAtLeast(0))
         val targetScene = scriptState.scenes.getOrNull(validSceneIndex) ?: return
 
@@ -552,6 +565,35 @@ fun ReadSceneScreen(
             selectedSceneIndex = validSceneIndex
             currentLineIndex = targetLineIndex
             val line = targetScene.lines[targetLineIndex]
+            if (
+                line.actor != Actor.ACTION &&
+                scriptState.mutedCharacterNames.any { it.equals(line.actor.name, ignoreCase = true) }
+            ) {
+                textToSpeech?.stop()
+                if (isPlaying) {
+                    val estimatedDurationMillis = (wordCount(line.line) / 2.5 * 1000).toLong()
+                    mutedLineDelayJob = playbackScope.launch {
+                        delay(estimatedDurationMillis)
+                        if (
+                            readerActive.value &&
+                            activeScriptId == script.id &&
+                            isPlaying &&
+                            selectedSceneIndex == validSceneIndex &&
+                            currentLineIndex == targetLineIndex
+                        ) {
+                            val completedScene = scriptState.scenes.getOrNull(validSceneIndex) ?: return@launch
+                            if (targetLineIndex + 1 < completedScene.lines.size) {
+                                speakLineAt(validSceneIndex, targetLineIndex + 1)
+                            } else if (!stopAtSceneEnd && validSceneIndex + 1 < scriptState.scenes.size) {
+                                speakLineAt(validSceneIndex + 1, 0)
+                            } else {
+                                stopPlayback()
+                            }
+                        }
+                    }
+                }
+                return
+            }
             val selectedVoiceName = resolveVoiceChoiceForLine(line)
             if (!selectedVoiceName.isNullOrBlank()) {
                 val matchingVoice = textToSpeech?.voices?.firstOrNull { it.name == selectedVoiceName }
@@ -573,6 +615,46 @@ fun ReadSceneScreen(
             speakLineAt(nextSceneIndex, 0)
         } else {
             stopPlayback()
+        }
+    }
+
+    fun advancePlaybackFrom(completedSceneIndex: Int, completedLineIndex: Int) {
+        val completedScene = scriptState.scenes.getOrNull(completedSceneIndex) ?: return
+        if (completedLineIndex + 1 < completedScene.lines.size) {
+            speakLineAt(completedSceneIndex, completedLineIndex + 1)
+        } else if (!stopAtSceneEnd && completedSceneIndex + 1 < scriptState.scenes.size) {
+            speakLineAt(completedSceneIndex + 1, 0)
+        } else {
+            stopPlayback()
+        }
+    }
+
+    fun saveMutedCharacters(mutedNames: Set<String>) {
+        val updatedScript = cloneScriptState()
+        val characterNames = updatedScript.actors
+            .filter { it != Actor.ACTION }
+            .map { it.name.uppercase() }
+            .toSet()
+        val currentLine = updatedScript.scenes
+            .getOrNull(selectedSceneIndex)
+            ?.lines
+            ?.getOrNull(currentLineIndex)
+        val wasCurrentLineMuted = currentLine != null &&
+            currentLine.actor != Actor.ACTION &&
+            updatedScript.mutedCharacterNames.any { it.equals(currentLine.actor.name, ignoreCase = true) }
+
+        updatedScript.mutedCharacterNames.clear()
+        updatedScript.mutedCharacterNames.addAll(
+            mutedNames.map { it.uppercase() }.filter { it in characterNames }
+        )
+        scriptState = updatedScript
+        onSaveScript(updatedScript)
+
+        val isCurrentLineMuted = currentLine != null &&
+            currentLine.actor != Actor.ACTION &&
+            updatedScript.mutedCharacterNames.any { it.equals(currentLine.actor.name, ignoreCase = true) }
+        if (isPlaying && currentLine != null && wasCurrentLineMuted != isCurrentLineMuted) {
+            speakLineAt(selectedSceneIndex, currentLineIndex)
         }
     }
 
@@ -665,19 +747,8 @@ fun ReadSceneScreen(
                     if (!readerActive.value || activeScriptId != script.id || !isPlaying) {
                         return@post
                     }
-                    val activeScene = scriptState.scenes.getOrNull(selectedSceneIndex) ?: return@post
-                    if (currentLineIndex + 1 < activeScene.lines.size) {
-                        speakLineAt(selectedSceneIndex, currentLineIndex + 1)
-                    } else if (!stopAtSceneEnd) {
-                        val nextSceneIndex = selectedSceneIndex + 1
-                        if (nextSceneIndex < scriptState.scenes.size) {
-                            speakLineAt(nextSceneIndex, 0)
-                        } else {
-                            stopPlayback()
-                        }
-                    } else {
-                        stopPlayback()
-                    }
+                    if (scriptState.scenes.getOrNull(selectedSceneIndex) == null) return@post
+                    advancePlaybackFrom(selectedSceneIndex, currentLineIndex)
                 }
             }
         })
@@ -734,6 +805,13 @@ fun ReadSceneScreen(
                             onClick = {
                                 stopAtSceneEnd = !stopAtSceneEnd
                                 menuExpanded = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Character lines") },
+                            onClick = {
+                                menuExpanded = false
+                                showCharacterLinesDialog = true
                             }
                         )
                         DropdownMenuItem(
@@ -817,6 +895,8 @@ fun ReadSceneScreen(
                     line = line,
                     isSelected = index == currentLineIndex,
                     isEditing = editingLineIndex == index,
+                    isLineMuted = line.actor != Actor.ACTION &&
+                        scriptState.mutedCharacterNames.any { it.equals(line.actor.name, ignoreCase = true) },
                     editingActorName = if (editingLineIndex == index) editingActorName else line.actor.name.uppercase(),
                     editingLineText = if (editingLineIndex == index) editingLineText else line.line,
                     characterSuggestions = scriptState.actors
@@ -1059,6 +1139,84 @@ fun ReadSceneScreen(
             }
         }
     }
+
+    if (showCharacterLinesDialog) {
+        val characters = scriptState.actors
+            .filter { it != Actor.ACTION }
+            .distinctBy { it.name.uppercase() }
+            .sortedBy { it.name.uppercase() }
+        val currentlyMuted = scriptState.mutedCharacterNames
+            .map { it.uppercase() }
+            .toSet()
+
+        AlertDialog(
+            onDismissRequest = { showCharacterLinesDialog = false },
+            title = { Text("Character lines") },
+            text = {
+                Column {
+                    Text(
+                        text = "Turn lines on or off for the whole script.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(
+                            onClick = { saveMutedCharacters(emptySet()) },
+                            enabled = currentlyMuted.isNotEmpty()
+                        ) {
+                            Text("All on")
+                        }
+                        TextButton(
+                            onClick = {
+                                saveMutedCharacters(characters.map { it.name.uppercase() }.toSet())
+                            },
+                            enabled = characters.any { it.name.uppercase() !in currentlyMuted }
+                        ) {
+                            Text("All off")
+                        }
+                    }
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 360.dp)
+                    ) {
+                        itemsIndexed(characters, key = { _, actor -> actor.name.uppercase() }) { _, actor ->
+                            val isEnabled = actor.name.uppercase() !in currentlyMuted
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = actor.name.uppercase(),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Checkbox(
+                                    checked = isEnabled,
+                                    onCheckedChange = { checked ->
+                                        val updatedMutedNames = currentlyMuted.toMutableSet()
+                                        if (checked) {
+                                            updatedMutedNames.remove(actor.name.uppercase())
+                                        } else {
+                                            updatedMutedNames.add(actor.name.uppercase())
+                                        }
+                                        saveMutedCharacters(updatedMutedNames)
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCharacterLinesDialog = false }) {
+                    Text("Close")
+                }
+            }
+        )
+    }
 }
 
 private data class VoiceAssignment(
@@ -1127,6 +1285,7 @@ private fun CharacterVoiceEditorRow(
                             }
                         )
                     }
+
                 }
             }
         }

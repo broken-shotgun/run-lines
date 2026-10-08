@@ -3,10 +3,17 @@ package com.brokenshotgun.runlines.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -20,6 +27,7 @@ fun LineEditRow(
     line: Line,
     isSelected: Boolean,
     isEditing: Boolean,
+    isLineMuted: Boolean,
     editingActorName: String,
     editingLineText: String,
     characterSuggestions: List<String>,
@@ -32,6 +40,7 @@ fun LineEditRow(
     onDelete: () -> Unit
 ) {
     val isActionLine = line.actor == Actor.ACTION
+    var isRevealed by remember(line.actor.name, isLineMuted) { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
     val matchingSuggestions = remember(editingActorName, characterSuggestions) {
         val query = editingActorName.trim()
@@ -40,6 +49,32 @@ fun LineEditRow(
         } else {
             characterSuggestions.filter { it.contains(query, ignoreCase = true) }
         }
+    }
+
+    val interactionModifier = if (isLineMuted) {
+        Modifier
+            .semantics {
+                onClick(label = "Select line") {
+                    onClick()
+                    true
+                }
+            }
+            .pointerInput(isLineMuted, onClick) {
+                detectTapGestures(
+                    onPress = {
+                        isRevealed = false
+                        tryAwaitRelease()
+                        isRevealed = false
+                    },
+                    onLongPress = { isRevealed = true },
+                    onTap = { onClick() }
+                )
+            }
+    } else {
+        Modifier.combinedClickable(
+            onClick = onClick,
+            onLongClick = onLongClick
+        )
     }
 
     Column(
@@ -51,10 +86,7 @@ fun LineEditRow(
                     shape = MaterialTheme.shapes.medium
                 ) else Modifier
             )
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
+            .then(interactionModifier)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -144,12 +176,28 @@ fun LineEditRow(
             if (line.line.isNotBlank()) {
                 Text(
                     text = line.line,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if (isLineMuted && !isRevealed) Color.Black else MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,
                     style = if (isActionLine) MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium) else MaterialTheme.typography.bodyLarge,
                     lineHeight = 24.sp,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(if (isLineMuted && !isRevealed) Color.Black else Color.Transparent)
+                        .then(
+                            if (isLineMuted && !isRevealed) {
+                                Modifier.clearAndSetSemantics {
+                                    contentDescription = "Hidden line"
+                                }
+                            } else {
+                                Modifier
+                            }
+                        )
                 )
+            }
+            if (isLineMuted) {
+                TextButton(onClick = onLongClick) {
+                    Text("Edit line")
+                }
             }
         }
     }
