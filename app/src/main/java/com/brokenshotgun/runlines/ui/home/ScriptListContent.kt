@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -30,6 +31,7 @@ fun ScriptListContent(
 ) {
     var expandedScriptId by remember { mutableStateOf<Long?>(null) }
     var scriptToRename by remember { mutableStateOf<Script?>(null) }
+    var scriptToDelete by remember { mutableStateOf<Script?>(null) }
     var renameValue by remember { mutableStateOf("") }
 
     Column(
@@ -95,10 +97,22 @@ fun ScriptListContent(
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Delete script") },
+                                    text = {
+                                        Text(
+                                            "Delete script",
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    },
                                     onClick = {
-                                        onDeleteScript(script)
                                         expandedScriptId = null
+                                        scriptToDelete = script
                                     }
                                 )
                             }
@@ -137,6 +151,34 @@ fun ScriptListContent(
                     }
                 }
             }
+        }
+
+        scriptToDelete?.let { script ->
+            AlertDialog(
+                onDismissRequest = { scriptToDelete = null },
+                title = { Text("Delete script?") },
+                text = {
+                    Text(
+                        "Delete \"${script.name}\" and all of its scenes and lines? " +
+                            "This cannot be undone."
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            onDeleteScript(script)
+                            scriptToDelete = null
+                        }
+                    ) {
+                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { scriptToDelete = null }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }
