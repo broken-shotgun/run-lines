@@ -164,7 +164,7 @@ object TtsPlaybackController {
         val currentProgress = progressValue.coerceIn(0, maxProgress)
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_lock_silent_mode)
+            .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentTitle(scriptTitle)
             .setContentText(notificationText)
             .setSubText(if (isPlaying) "Playing" else "Paused")
