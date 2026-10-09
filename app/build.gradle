@@ -16,7 +16,7 @@ android {
         applicationId "com.brokenshotgun.runlines"
         minSdk 23
         targetSdk 37
-        versionCode 36
+        versionCode 37
         versionName "1.0.0"
         resConfigs "en"
     }
