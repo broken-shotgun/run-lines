@@ -66,12 +66,14 @@ fun ReadSceneScreen(
     val context = LocalContext.current
     val playbackScope = rememberCoroutineScope()
     val safeSceneIndex = sceneIndex.coerceIn(0, scriptState.scenes.lastIndex.coerceAtLeast(0))
-    var selectedSceneIndex by remember(scriptState.scenes.size, safeSceneIndex) {
+    var selectedSceneIndex by remember(script.id) {
         mutableIntStateOf(safeSceneIndex)
     }
-    val currentScene = scriptState.scenes.getOrNull(selectedSceneIndex) ?: scriptState.scenes.firstOrNull() ?: return
+    val currentScene = scriptState.scenes.getOrNull(selectedSceneIndex) ?: scriptState.scenes.firstOrNull() ?: Scene()
 
     var textToSpeech by remember { mutableStateOf<TextToSpeech?>(null) }
+    var activeUtteranceId by remember { mutableStateOf<String?>(null) }
+    var playbackUtteranceSequence by remember { mutableLongStateOf(0L) }
     val activeScriptId by rememberUpdatedState(scriptState.id)
     val readerActive = remember(script.id) { mutableStateOf(true) }
     var currentLineIndex by remember { mutableIntStateOf(-1) }
@@ -80,6 +82,10 @@ fun ReadSceneScreen(
     var stopAtSceneEnd by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
     var showSceneSelector by remember { mutableStateOf(false) }
+    var showAddSceneDialog by remember { mutableStateOf(false) }
+    var sceneHeadingPrefix by remember { mutableStateOf("INT.") }
+    var sceneHeadingLocation by remember { mutableStateOf("") }
+    var sceneHeadingPrefixExpanded by remember { mutableStateOf(false) }
     var sceneSearchQuery by remember { mutableStateOf("") }
     var showVoiceDialog by remember { mutableStateOf(false) }
     var showCharacterLinesDialog by remember { mutableStateOf(false) }
@@ -218,6 +224,7 @@ fun ReadSceneScreen(
     fun stopPlayback() {
         mutedLineDelayJob?.cancel()
         mutedLineDelayJob = null
+        activeUtteranceId = null
         textToSpeech?.stop()
         isPlaying = false
         currentLineIndex = -1
@@ -243,7 +250,9 @@ fun ReadSceneScreen(
     }
 
     LaunchedEffect(script.id, selectedSceneIndex) {
-        loadScene(selectedSceneIndex)
+        if (scriptState.scenes.isNotEmpty()) {
+            loadScene(selectedSceneIndex)
+        }
     }
 
     fun sceneLabel(index: Int): String {
@@ -300,6 +309,7 @@ fun ReadSceneScreen(
     fun pausePlayback() {
         mutedLineDelayJob?.cancel()
         mutedLineDelayJob = null
+        activeUtteranceId = null
         textToSpeech?.stop()
         isPlaying = false
         TtsPlaybackController.setPlayingState(
@@ -390,6 +400,21 @@ fun ReadSceneScreen(
 
         scriptState = updatedScript
         onSaveScript(scriptState)
+    }
+
+    fun addNewScene() {
+        val location = sceneHeadingLocation.trim()
+        if (location.isBlank()) return
+
+        val updatedScript = cloneScriptState()
+        updatedScript.addScene(Scene(name = "$sceneHeadingPrefix $location".uppercase(Locale.ROOT)))
+        scriptState = updatedScript
+        selectedSceneIndex = updatedScript.scenes.lastIndex
+        currentLineIndex = -1
+        resetSceneEditHistory()
+        sceneHeadingLocation = ""
+        showAddSceneDialog = false
+        onSaveScript(updatedScript)
     }
 
     fun redoSceneEdit() {
@@ -652,6 +677,7 @@ fun ReadSceneScreen(
                 line.actor != Actor.ACTION &&
                 scriptState.mutedCharacterNames.any { it.equals(line.actor.name, ignoreCase = true) }
             ) {
+                activeUtteranceId = null
                 textToSpeech?.stop()
                 if (isPlaying) {
                     val estimatedDurationMillis = (wordCount(line.line) / 2.5 * 1000).toLong()
@@ -684,7 +710,10 @@ fun ReadSceneScreen(
                     textToSpeech?.voice = matchingVoice
                 }
             }
-            textToSpeech?.speak(line.line, TextToSpeech.QUEUE_FLUSH, null, "scene_${validSceneIndex}_line_$targetLineIndex")
+            playbackUtteranceSequence += 1
+            val utteranceId = "scene_${validSceneIndex}_line_${targetLineIndex}_playback_$playbackUtteranceSequence"
+            activeUtteranceId = utteranceId
+            textToSpeech?.speak(line.line, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
             return
         }
 
@@ -711,6 +740,12 @@ fun ReadSceneScreen(
             stopPlayback()
         }
     }
+
+    val advancePlaybackFromLatest by rememberUpdatedState(
+        newValue = { completedSceneIndex: Int, completedLineIndex: Int ->
+            advancePlaybackFrom(completedSceneIndex, completedLineIndex)
+        }
+    )
 
     fun saveMutedCharacters(mutedNames: Set<String>) {
         val updatedScript = cloneScriptState()
@@ -767,6 +802,7 @@ fun ReadSceneScreen(
     }
 
     LaunchedEffect(selectedSceneIndex, currentLineIndex, isPlaying, currentScene.name) {
+        if (scriptState.scenes.isEmpty()) return@LaunchedEffect
         val (totalWords, spokenWords) = estimatedSceneProgress()
         TtsPlaybackController.setPlayingState(
             context = context,
@@ -848,15 +884,24 @@ fun ReadSceneScreen(
                 voiceLanguagePriority[voiceName] ?: 1
             }.thenBy { it.lowercase() })
         voiceDialogOptions = createVoiceOptions(listOf("Default") + availableVoiceNames, allVoices)
-        engine.setOnUtteranceProgressListener(ReadSceneTTSListener {
-            if (readerActive.value && activeScriptId == script.id && isPlaying) {
-                android.os.Handler(android.os.Looper.getMainLooper()).post {
-                    if (!readerActive.value || activeScriptId != script.id || !isPlaying) {
-                        return@post
-                    }
-                    if (scriptState.scenes.getOrNull(selectedSceneIndex) == null) return@post
-                    advancePlaybackFrom(selectedSceneIndex, currentLineIndex)
+        engine.setOnUtteranceProgressListener(ReadSceneTTSListener { utteranceId ->
+            val utteranceMatch = UTTERANCE_ID_PATTERN.matchEntire(utteranceId.orEmpty())
+                ?: return@ReadSceneTTSListener
+            val completedSceneIndex = utteranceMatch.groupValues[1].toIntOrNull()
+                ?: return@ReadSceneTTSListener
+            val completedLineIndex = utteranceMatch.groupValues[2].toIntOrNull()
+                ?: return@ReadSceneTTSListener
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                if (
+                    !readerActive.value ||
+                    activeScriptId != script.id ||
+                    !isPlaying ||
+                    activeUtteranceId != utteranceId
+                ) {
+                    return@post
                 }
+                activeUtteranceId = null
+                advancePlaybackFromLatest(completedSceneIndex, completedLineIndex)
             }
         })
     }
@@ -933,30 +978,32 @@ fun ReadSceneScreen(
             )
         },
         floatingActionButton = {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                FloatingActionButton(
-                    onClick = {
-                        if (currentScene.isLoaded) addNewLineToBottom()
-                    }
+            if (scriptState.scenes.isNotEmpty()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Add line"
-                    )
-                }
+                    FloatingActionButton(
+                        onClick = {
+                            if (currentScene.isLoaded) addNewLineToBottom()
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Add line"
+                        )
+                    }
 
-                FloatingActionButton(
-                    onClick = {
-                        if (currentScene.isLoaded) togglePlayback()
+                    FloatingActionButton(
+                        onClick = {
+                            if (currentScene.isLoaded) togglePlayback()
+                        }
+                    ) {
+                        Icon(
+                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = "Play/Pause"
+                        )
                     }
-                ) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = "Play/Pause"
-                    )
                 }
             }
         }
@@ -968,101 +1015,222 @@ fun ReadSceneScreen(
             contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            item {
-                OutlinedButton(
-                    onClick = {
-                        sceneSearchQuery = ""
-                        showSceneSelector = true
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp)
-                ) {
-                    Text(
-                        text = sceneLabel(selectedSceneIndex),
-                        modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Start,
-                        maxLines = 1
-                    )
-                    Icon(
-                        imageVector = Icons.Default.ArrowDropDown,
-                        contentDescription = "Choose scene"
-                    )
-                }
-            }
-
-            item {
-                Text(
-                    text = currentScene.name?.uppercase() ?: "UNTITLED SCENE",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            if (!currentScene.isLoaded) {
+            if (scriptState.scenes.isEmpty()) {
                 item {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 32.dp),
+                            .padding(vertical = 64.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        if (selectedSceneIndex in loadingSceneIndices) {
-                            CircularProgressIndicator()
-                        } else {
-                            Text(sceneLoadError ?: "Scene not loaded")
-                            TextButton(onClick = { loadScene(selectedSceneIndex) }) {
-                                Text("Retry")
-                            }
+                        Text(
+                            text = "No scenes yet",
+                            style = MaterialTheme.typography.headlineSmall,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = "Add a scene to get started.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center
+                        )
+                        Button(onClick = { showAddSceneDialog = true }) {
+                            Icon(Icons.Default.Add, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Add scene")
                         }
                     }
                 }
-            } else itemsIndexed(currentScene.lines) { index, line ->
-                LineEditRow(
-                    line = line,
-                    isSelected = index == currentLineIndex,
-                    isEditing = editingLineIndex == index,
-                    isLineMuted = line.actor != Actor.ACTION &&
-                        scriptState.mutedCharacterNames.any { it.equals(line.actor.name, ignoreCase = true) },
-                    editingActorName = if (editingLineIndex == index) editingActorName else line.actor.name.uppercase(),
-                    editingLineText = if (editingLineIndex == index) editingLineText else line.line,
-                    characterSuggestions = scriptState.actors
-                        .map { it.name }
-                        .filter { it != Actor.ACTION_NAME }
-                        .distinct()
-                        .sorted(),
-                    onClick = {
-                        if (isPlaying) {
-                            speakLineAt(selectedSceneIndex, index)
-                        } else {
-                            currentLineIndex = index
-                        }
-                    },
-                    onLongClick = {
-                        beginEditingLine(index)
-                    },
-                    onActorValueChange = {
-                        editingActorName = it.uppercase()
-                    },
-                    onLineValueChange = {
-                        editingLineText = it
-                    },
-                    onSave = {
-                        saveEditingLineChanges(index, editingActorName, editingLineText)
-                        currentLineIndex = index
-                    },
-                    onCancel = {
-                        cancelEditingLine()
-                    },
-                    onDelete = {
-                        deleteLineAndSave(index)
+            } else {
+                item {
+                    OutlinedButton(
+                        onClick = {
+                            sceneSearchQuery = ""
+                            showSceneSelector = true
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp)
+                    ) {
+                        Text(
+                            text = sceneLabel(selectedSceneIndex),
+                            modifier = Modifier.weight(1f),
+                            textAlign = TextAlign.Start,
+                            maxLines = 1
+                        )
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = "Choose scene"
+                        )
                     }
-                )
+                }
+
+                item {
+                    Text(
+                        text = currentScene.name?.uppercase() ?: "UNTITLED SCENE",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                if (!currentScene.isLoaded) {
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            if (selectedSceneIndex in loadingSceneIndices) {
+                                CircularProgressIndicator()
+                            } else {
+                                Text(sceneLoadError ?: "Scene not loaded")
+                                TextButton(onClick = { loadScene(selectedSceneIndex) }) {
+                                    Text("Retry")
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    itemsIndexed(currentScene.lines) { index, line ->
+                        LineEditRow(
+                            line = line,
+                            isSelected = index == currentLineIndex,
+                            isEditing = editingLineIndex == index,
+                            isLineMuted = line.actor != Actor.ACTION &&
+                                scriptState.mutedCharacterNames.any { it.equals(line.actor.name, ignoreCase = true) },
+                            editingActorName = if (editingLineIndex == index) editingActorName else line.actor.name.uppercase(),
+                            editingLineText = if (editingLineIndex == index) editingLineText else line.line,
+                            characterSuggestions = scriptState.actors
+                                .map { it.name }
+                                .filter { it != Actor.ACTION_NAME }
+                                .distinct()
+                                .sorted(),
+                            onClick = {
+                                if (isPlaying) {
+                                    speakLineAt(selectedSceneIndex, index)
+                                } else {
+                                    currentLineIndex = index
+                                }
+                            },
+                            onLongClick = {
+                                beginEditingLine(index)
+                            },
+                            onActorValueChange = {
+                                editingActorName = it.uppercase()
+                            },
+                            onLineValueChange = {
+                                editingLineText = it
+                            },
+                            onSave = {
+                                saveEditingLineChanges(index, editingActorName, editingLineText)
+                                currentLineIndex = index
+                            },
+                            onCancel = {
+                                cancelEditingLine()
+                            },
+                            onDelete = {
+                                deleteLineAndSave(index)
+                            }
+                        )
+                    }
+                }
+
+                item {
+                    OutlinedButton(
+                        onClick = { showAddSceneDialog = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Add scene")
+                    }
+                }
             }
         }
+    }
+
+    if (showAddSceneDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showAddSceneDialog = false
+                sceneHeadingLocation = ""
+                sceneHeadingPrefixExpanded = false
+            },
+            title = { Text("Add scene") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ExposedDropdownMenuBox(
+                        expanded = sceneHeadingPrefixExpanded,
+                        onExpandedChange = {
+                            sceneHeadingPrefixExpanded = !sceneHeadingPrefixExpanded
+                        }
+                    ) {
+                        OutlinedTextField(
+                            value = sceneHeadingPrefix,
+                            onValueChange = {},
+                            readOnly = true,
+                            singleLine = true,
+                            label = { Text("Heading prefix") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(
+                                    expanded = sceneHeadingPrefixExpanded
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = sceneHeadingPrefixExpanded,
+                            onDismissRequest = { sceneHeadingPrefixExpanded = false }
+                        ) {
+                            listOf("INT.", "EXT.", "EST.", "INT./EXT.", "INT/EXT.", "I/E.").forEach { prefix ->
+                                DropdownMenuItem(
+                                    text = { Text(prefix) },
+                                    onClick = {
+                                        sceneHeadingPrefix = prefix
+                                        sceneHeadingPrefixExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    OutlinedTextField(
+                        value = sceneHeadingLocation,
+                        onValueChange = { sceneHeadingLocation = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("Scene name") },
+                        placeholder = { Text("Location - Time") }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { addNewScene() },
+                    enabled = sceneHeadingLocation.isNotBlank()
+                ) {
+                    Text("Add")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showAddSceneDialog = false
+                        sceneHeadingLocation = ""
+                        sceneHeadingPrefixExpanded = false
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     if (showSceneSelector) {
@@ -1486,6 +1654,8 @@ private data class VoiceAssignment(
     var enabled: Boolean = true,
     val isInCurrentScene: Boolean = false
 )
+
+private val UTTERANCE_ID_PATTERN = Regex("^scene_(\\d+)_line_(\\d+)_playback_\\d+$")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

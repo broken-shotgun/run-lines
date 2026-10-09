@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.launch
 
 data class ReaderUiState(
@@ -23,6 +25,7 @@ data class ReaderUiState(
 class ReaderViewModel(repository: ScriptRepository) : ViewModel() {
     private val getScript = GetScriptUseCase(repository)
     private val updateScript = UpdateScriptUseCase(repository)
+    private val scriptSaveMutex = Mutex()
 
     private val _uiState = MutableStateFlow(ReaderUiState())
     val uiState: StateFlow<ReaderUiState> = _uiState.asStateFlow()
@@ -55,12 +58,14 @@ class ReaderViewModel(repository: ScriptRepository) : ViewModel() {
 
     fun saveScript(script: Script) {
         viewModelScope.launch {
-            try {
-                updateScript(script)
-                _uiState.update { it.copy(script = script, errorMessage = null) }
-            } catch (error: Exception) {
-                _uiState.update {
-                    it.copy(errorMessage = error.message ?: "Could not save script")
+            scriptSaveMutex.withLock {
+                try {
+                    updateScript(script)
+                    _uiState.update { it.copy(script = script, errorMessage = null) }
+                } catch (error: Exception) {
+                    _uiState.update {
+                        it.copy(errorMessage = error.message ?: "Could not save script")
+                    }
                 }
             }
         }

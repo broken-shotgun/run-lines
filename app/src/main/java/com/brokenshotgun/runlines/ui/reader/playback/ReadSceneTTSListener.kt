@@ -4,7 +4,7 @@ import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 
 class ReadSceneTTSListener(
-    private val onLineDone: () -> Unit
+    private val onLineDone: (String?) -> Unit
 ) : UtteranceProgressListener() {
     override fun onStart(utteranceId: String?) {
         Log.d("ReadSceneTTSListener", "Started speaking: $utteranceId")
@@ -12,7 +12,7 @@ class ReadSceneTTSListener(
 
     override fun onDone(utteranceId: String?) {
         Log.d("ReadSceneTTSListener", "Done speaking: $utteranceId")
-        onLineDone()
+        onLineDone(utteranceId)
     }
 
     override fun onError(utteranceId: String?) {
