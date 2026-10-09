@@ -97,6 +97,10 @@ fun ReadSceneScreen(
     var voiceDialogCharacters by remember { mutableStateOf<List<VoiceAssignment>>(emptyList()) }
     var voiceDialogOptions by remember { mutableStateOf<List<VoiceOption>>(emptyList()) }
     var voiceDialogError by remember { mutableStateOf<String?>(null) }
+    var voiceDialogRemovedCharacterReplacements by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var pendingVoiceRemoval by remember { mutableStateOf<VoiceAssignment?>(null) }
+    var voiceRemovalReplacementName by remember { mutableStateOf(Actor.ACTION_NAME) }
+    var voiceRemovalReplacementExpanded by remember { mutableStateOf(false) }
     var unsavedChanges by remember { mutableStateOf(false) }
     var showExitDialog by remember { mutableStateOf(false) }
     var editingLineIndex by remember { mutableStateOf<Int?>(null) }
@@ -584,6 +588,8 @@ fun ReadSceneScreen(
                 )
             }
         voiceDialogError = null
+        voiceDialogRemovedCharacterReplacements = emptyMap()
+        pendingVoiceRemoval = null
         showVoiceDialog = true
     }
 
@@ -630,24 +636,36 @@ fun ReadSceneScreen(
             .map { it.name.uppercase() }
             .toSet()
 
-        val removedNames = currentNames - incomingNames
-        removedNames.forEach { removedName ->
-            val actorToRemove = updatedScript.actors.firstOrNull { it.name.uppercase() == removedName } ?: return@forEach
-            updatedScript.replaceActor(actorToRemove, Actor.ACTION)
-            updatedScript.actorVoices.remove(removedName)
-            updatedScript.mutedCharacterNames.remove(removedName)
-        }
-
         resolvedAssignments.forEach { assignment ->
             val normalizedName = assignment.name.uppercase()
-            val actor = updatedScript.actors.firstOrNull { it.name.uppercase() == normalizedName }
-                ?: Actor(normalizedName).also { updatedScript.actors.add(it) }
+            if (updatedScript.actors.none { it.name.uppercase() == normalizedName }) {
+                updatedScript.actors.add(Actor(normalizedName))
+            }
             val resolvedSelection = assignment.selectedVoice.trim()
             if (resolvedSelection.isBlank() || resolvedSelection.equals("Default", ignoreCase = true)) {
                 updatedScript.actorVoices.remove(normalizedName)
             } else {
                 updatedScript.actorVoices[normalizedName] = resolvedSelection
             }
+        }
+
+        val removedNames = currentNames - incomingNames
+        removedNames.forEach { removedName ->
+            val actorToRemove = updatedScript.actors.firstOrNull { it.name.uppercase() == removedName } ?: return@forEach
+            val replacementName = voiceDialogRemovedCharacterReplacements[removedName]
+                ?: Actor.ACTION_NAME
+            val replacementActor = if (replacementName.equals(Actor.ACTION_NAME, ignoreCase = true)) {
+                Actor.ACTION
+            } else {
+                updatedScript.actors.firstOrNull { it.name.equals(replacementName, ignoreCase = true) }
+                    ?: run {
+                        voiceDialogError = "Choose a character in the script to receive these lines."
+                        return
+                    }
+            }
+            updatedScript.replaceActor(actorToRemove, replacementActor)
+            updatedScript.actorVoices.remove(removedName)
+            updatedScript.mutedCharacterNames.remove(removedName)
         }
 
         val firstEnUsVoice = textToSpeech?.voices
@@ -662,6 +680,7 @@ fun ReadSceneScreen(
 
         scriptState = updatedScript
         onSaveScript(scriptState)
+        voiceDialogRemovedCharacterReplacements = emptyMap()
         showVoiceDialog = false
     }
 
@@ -1521,7 +1540,8 @@ fun ReadSceneScreen(
                                         }
                                     },
                                     onRemove = {
-                                        voiceDialogCharacters = voiceDialogCharacters.filterNot { it === assignment }
+                                        pendingVoiceRemoval = assignment
+                                        voiceRemovalReplacementName = Actor.ACTION_NAME
                                     }
                                 )
                             }
@@ -1551,7 +1571,8 @@ fun ReadSceneScreen(
                                         }
                                     },
                                     onRemove = {
-                                        voiceDialogCharacters = voiceDialogCharacters.filterNot { it === assignment }
+                                        pendingVoiceRemoval = assignment
+                                        voiceRemovalReplacementName = Actor.ACTION_NAME
                                     }
                                 )
                             }
@@ -1596,6 +1617,85 @@ fun ReadSceneScreen(
                 }
             }
         }
+    }
+
+    pendingVoiceRemoval?.let { assignment ->
+        val replacementOptions = (
+            listOf(Actor.ACTION_NAME) +
+                voiceDialogCharacters
+                    .filterNot { it === assignment }
+                    .map { it.name.trim().uppercase() }
+                    .filter { it.isNotBlank() }
+            ).distinct()
+        var replacementMenuExpanded by remember(assignment) { mutableStateOf(false) }
+
+        AlertDialog(
+            onDismissRequest = { pendingVoiceRemoval = null },
+            title = { Text("Remove character?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "Transfer all lines for ${assignment.name} to the selected character? " +
+                            "The transfer will be applied when you save Character voices."
+                    )
+                    ExposedDropdownMenuBox(
+                        expanded = replacementMenuExpanded,
+                        onExpandedChange = {
+                            replacementMenuExpanded = !replacementMenuExpanded
+                        }
+                    ) {
+                        OutlinedTextField(
+                            value = voiceRemovalReplacementName,
+                            onValueChange = {},
+                            readOnly = true,
+                            singleLine = true,
+                            label = { Text("Transfer lines to") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(
+                                    expanded = replacementMenuExpanded
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = replacementMenuExpanded,
+                            onDismissRequest = { replacementMenuExpanded = false }
+                        ) {
+                            replacementOptions.forEach { characterName ->
+                                DropdownMenuItem(
+                                    text = { Text(characterName) },
+                                    onClick = {
+                                        voiceRemovalReplacementName = characterName
+                                        replacementMenuExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        voiceDialogRemovedCharacterReplacements =
+                            voiceDialogRemovedCharacterReplacements +
+                                (assignment.name.uppercase() to voiceRemovalReplacementName)
+                        voiceDialogCharacters =
+                            voiceDialogCharacters.filterNot { it === assignment }
+                        pendingVoiceRemoval = null
+                    }
+                ) {
+                    Text("Remove")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingVoiceRemoval = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     if (showCharacterLinesDialog) {
