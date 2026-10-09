@@ -118,6 +118,8 @@ fun AppNavigation(
                                 }
                             },
                             onSaveScript = readerViewModel::saveScript,
+                            onInsertScene = readerViewModel::insertScene,
+                            onDeleteScene = readerViewModel::deleteScene,
                             onLoadScene = { index ->
                                 readerViewModel.loadScene(key.scriptId, index)
                             }

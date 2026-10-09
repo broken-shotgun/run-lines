@@ -3,6 +3,7 @@ package com.brokenshotgun.runlines.ui.reader
 import android.speech.tts.TextToSpeech
 import android.util.Log
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
@@ -58,6 +59,8 @@ fun ReadSceneScreen(
     sceneIndex: Int,
     onBack: () -> Unit,
     onSaveScript: (Script) -> Unit = {},
+    onInsertScene: (Script, Int) -> Unit = { updatedScript, _ -> onSaveScript(updatedScript) },
+    onDeleteScene: (Script, Int) -> Unit = { _, _ -> },
     onLoadScene: suspend (Int) -> Scene?
 ) {
     var scriptState by remember(script.id, script.name, script.scenes.size) {
@@ -81,10 +84,12 @@ fun ReadSceneScreen(
     var mutedLineDelayJob by remember { mutableStateOf<Job?>(null) }
     var stopAtSceneEnd by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
+    var showDeleteSceneDialog by remember { mutableStateOf(false) }
     var showSceneSelector by remember { mutableStateOf(false) }
     var showAddSceneDialog by remember { mutableStateOf(false) }
     var sceneHeadingPrefix by remember { mutableStateOf("INT.") }
     var sceneHeadingLocation by remember { mutableStateOf("") }
+    var insertSceneBeforeCurrent by remember { mutableStateOf(false) }
     var sceneHeadingPrefixExpanded by remember { mutableStateOf(false) }
     var sceneSearchQuery by remember { mutableStateOf("") }
     var showVoiceDialog by remember { mutableStateOf(false) }
@@ -407,14 +412,42 @@ fun ReadSceneScreen(
         if (location.isBlank()) return
 
         val updatedScript = cloneScriptState()
-        updatedScript.addScene(Scene(name = "$sceneHeadingPrefix $location".uppercase(Locale.ROOT)))
+        val insertionIndex = if (updatedScript.scenes.isEmpty()) {
+            0
+        } else {
+            (selectedSceneIndex + if (insertSceneBeforeCurrent) 0 else 1)
+                .coerceIn(0, updatedScript.scenes.size)
+        }
+        val newScene = Scene(name = "$sceneHeadingPrefix $location".uppercase(Locale.ROOT))
+        updatedScript.scenes.add(insertionIndex, newScene)
+        updatedScript.scenes.forEachIndexed { index, scene -> scene.number = index }
         scriptState = updatedScript
-        selectedSceneIndex = updatedScript.scenes.lastIndex
+        selectedSceneIndex = insertionIndex
         currentLineIndex = -1
         resetSceneEditHistory()
         sceneHeadingLocation = ""
+        insertSceneBeforeCurrent = false
         showAddSceneDialog = false
-        onSaveScript(updatedScript)
+        onInsertScene(updatedScript, insertionIndex)
+    }
+
+    fun deleteCurrentScene() {
+        val deletedSceneIndex = selectedSceneIndex
+        if (deletedSceneIndex !in scriptState.scenes.indices) return
+
+        if (isPlaying) {
+            stopPlayback()
+        }
+        val updatedScript = cloneScriptState()
+        updatedScript.scenes.removeAt(deletedSceneIndex)
+        updatedScript.scenes.forEachIndexed { index, scene -> scene.number = index }
+        scriptState = updatedScript
+        selectedSceneIndex = deletedSceneIndex.coerceAtMost(updatedScript.scenes.lastIndex.coerceAtLeast(0))
+        currentLineIndex = -1
+        exitEditMode()
+        resetSceneEditHistory()
+        showDeleteSceneDialog = false
+        onDeleteScene(updatedScript, deletedSceneIndex)
     }
 
     fun redoSceneEdit() {
@@ -973,6 +1006,22 @@ fun ReadSceneScreen(
                                 openCharacterVoiceDialog()
                             }
                         )
+                        if (scriptState.scenes.isNotEmpty()) {
+                            DropdownMenuItem(
+                                text = { Text("Delete scene", color = MaterialTheme.colorScheme.error) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    showDeleteSceneDialog = true
+                                }
+                            )
+                        }
                     }
                 }
             )
@@ -1155,16 +1204,70 @@ fun ReadSceneScreen(
         }
     }
 
+    if (showDeleteSceneDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteSceneDialog = false },
+            title = { Text("Delete scene?") },
+            text = {
+                Text(
+                    "Delete ${currentScene.name ?: "this scene"} and all of its lines? " +
+                        "This cannot be undone."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { deleteCurrentScene() }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteSceneDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     if (showAddSceneDialog) {
         AlertDialog(
             onDismissRequest = {
                 showAddSceneDialog = false
                 sceneHeadingLocation = ""
+                insertSceneBeforeCurrent = false
                 sceneHeadingPrefixExpanded = false
             },
             title = { Text("Add scene") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (scriptState.scenes.isNotEmpty()) {
+                        Text(
+                            text = "Insert",
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(
+                                selected = !insertSceneBeforeCurrent,
+                                onClick = { insertSceneBeforeCurrent = false }
+                            )
+                            Text(
+                                text = "After current scene",
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { insertSceneBeforeCurrent = false }
+                            )
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(
+                                selected = insertSceneBeforeCurrent,
+                                onClick = { insertSceneBeforeCurrent = true }
+                            )
+                            Text(
+                                text = "Before current scene",
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { insertSceneBeforeCurrent = true }
+                            )
+                        }
+                    }
                     ExposedDropdownMenuBox(
                         expanded = sceneHeadingPrefixExpanded,
                         onExpandedChange = {
@@ -1224,6 +1327,7 @@ fun ReadSceneScreen(
                     onClick = {
                         showAddSceneDialog = false
                         sceneHeadingLocation = ""
+                        insertSceneBeforeCurrent = false
                         sceneHeadingPrefixExpanded = false
                     }
                 ) {

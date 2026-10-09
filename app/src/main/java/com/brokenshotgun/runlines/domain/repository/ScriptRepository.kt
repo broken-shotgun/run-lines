@@ -14,6 +14,10 @@ interface ScriptRepository {
 
     suspend fun updateScript(script: Script)
 
+    suspend fun insertScene(scriptId: Long, sceneIndex: Int, scene: Scene)
+
+    suspend fun deleteScene(scriptId: Long, sceneIndex: Int)
+
     suspend fun deleteScript(script: Script)
 }
 

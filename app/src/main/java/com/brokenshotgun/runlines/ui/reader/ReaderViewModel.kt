@@ -22,7 +22,7 @@ data class ReaderUiState(
     val errorMessage: String? = null
 )
 
-class ReaderViewModel(repository: ScriptRepository) : ViewModel() {
+class ReaderViewModel(private val repository: ScriptRepository) : ViewModel() {
     private val getScript = GetScriptUseCase(repository)
     private val updateScript = UpdateScriptUseCase(repository)
     private val scriptSaveMutex = Mutex()
@@ -65,6 +65,38 @@ class ReaderViewModel(repository: ScriptRepository) : ViewModel() {
                 } catch (error: Exception) {
                     _uiState.update {
                         it.copy(errorMessage = error.message ?: "Could not save script")
+                    }
+                }
+            }
+        }
+    }
+
+    fun deleteScene(script: Script, sceneIndex: Int) {
+        viewModelScope.launch {
+            scriptSaveMutex.withLock {
+                try {
+                    repository.deleteScene(script.id, sceneIndex)
+                    _uiState.update { it.copy(script = script, errorMessage = null) }
+                } catch (error: Exception) {
+                    _uiState.update {
+                        it.copy(errorMessage = error.message ?: "Could not delete scene")
+                    }
+                }
+            }
+        }
+    }
+
+    fun insertScene(script: Script, sceneIndex: Int) {
+        viewModelScope.launch {
+            scriptSaveMutex.withLock {
+                try {
+                    val scene = script.scenes.getOrNull(sceneIndex)
+                        ?: error("Scene $sceneIndex was not found for insertion")
+                    repository.insertScene(script.id, sceneIndex, scene)
+                    _uiState.update { it.copy(script = script, errorMessage = null) }
+                } catch (error: Exception) {
+                    _uiState.update {
+                        it.copy(errorMessage = error.message ?: "Could not add scene")
                     }
                 }
             }

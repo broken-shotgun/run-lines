@@ -96,6 +96,52 @@ class ScriptDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         check(updatedRows > 0) { "Script ${script.id} was not found for update" }
     }
 
+    fun insertScene(scriptId: Long, sceneIndex: Int, scene: Scene) {
+        val db = writableDatabase
+        val script = getFullScript(scriptId)
+            ?: error("Script $scriptId was not found for scene insertion")
+        require(sceneIndex in 0..script.scenes.size) {
+            "Scene insertion index $sceneIndex is invalid for script $scriptId"
+        }
+
+        script.scenes.add(sceneIndex, scene)
+        script.scenes.forEachIndexed { index, existingScene -> existingScene.number = index }
+        val values = ContentValues().apply {
+            put(ScriptEntry.COLUMN_NAME_SCRIPT_JSON, serialize(script))
+        }
+        val selection = "${android.provider.BaseColumns._ID} = ?"
+        val updatedRows = db.update(
+            ScriptEntry.TABLE_NAME,
+            values,
+            selection,
+            arrayOf(scriptId.toString())
+        )
+        check(updatedRows > 0) { "Script $scriptId was not found for scene insertion" }
+    }
+
+    fun deleteScene(scriptId: Long, sceneIndex: Int) {
+        val db = writableDatabase
+        val script = getFullScript(scriptId)
+            ?: error("Script $scriptId was not found for scene deletion")
+        require(sceneIndex in script.scenes.indices) {
+            "Scene $sceneIndex was not found in script $scriptId"
+        }
+
+        script.scenes.removeAt(sceneIndex)
+        script.scenes.forEachIndexed { index, scene -> scene.number = index }
+        val values = ContentValues().apply {
+            put(ScriptEntry.COLUMN_NAME_SCRIPT_JSON, serialize(script))
+        }
+        val selection = "${android.provider.BaseColumns._ID} = ?"
+        val updatedRows = db.update(
+            ScriptEntry.TABLE_NAME,
+            values,
+            selection,
+            arrayOf(scriptId.toString())
+        )
+        check(updatedRows > 0) { "Script $scriptId was not found for scene deletion" }
+    }
+
     fun deleteScript(script: Script) {
         val db = writableDatabase
 

@@ -33,6 +33,18 @@ class LocalScriptRepository(
         }
     }
 
+    override suspend fun insertScene(scriptId: Long, sceneIndex: Int, scene: Scene) {
+        withContext(Dispatchers.IO) {
+            database.insertScene(scriptId, sceneIndex, scene)
+        }
+    }
+
+    override suspend fun deleteScene(scriptId: Long, sceneIndex: Int) {
+        withContext(Dispatchers.IO) {
+            database.deleteScene(scriptId, sceneIndex)
+        }
+    }
+
     override suspend fun deleteScript(script: Script) {
         withContext(Dispatchers.IO) {
             database.deleteScript(script)
