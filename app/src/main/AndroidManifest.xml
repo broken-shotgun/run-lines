@@ -24,13 +24,13 @@
         <intent>
             <action android:name="android.speech.tts.engine.INSTALL_TTS_DATA" />
         </intent>
-        <intent>
-            <action android:name="android.intent.action.OPEN_DOCUMENT" />
-            <category android:name="android.intent.category.OPENABLE" />
-        </intent>
     </queries>
 
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+
     <application
+        android:name=".RunLinesApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/app_backup_scheme"
@@ -38,6 +38,10 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+
+        <receiver
+            android:name=".ui.reader.playback.TtsPlaybackReceiver"
+            android:exported="false" />
 
         <activity
             android:name=".MainActivity"
@@ -56,23 +60,6 @@
             </intent-filter>
 
         </activity>
-
-        <activity
-            android:name=".ReadSceneActivity"
-            android:exported="false"
-            android:label="@string/title_activity_read_script"
-            android:theme="@style/AppTheme.NoActionBar" />
-        <activity
-            android:name=".EditSceneActivity"
-            android:exported="false"
-            android:label="@string/title_activity_edit_script"
-            android:screenOrientation="portrait"
-            android:theme="@style/AppTheme.NoActionBar" />
-        <activity
-            android:name=".ScriptSceneListActivity"
-            android:exported="false"
-            android:label="@string/title_activity_script_scene_list"
-            android:theme="@style/AppTheme.NoActionBar" />
     </application>
 
 </manifest>
