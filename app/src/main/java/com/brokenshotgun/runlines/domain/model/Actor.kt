@@ -1,6 +1,10 @@
 package com.brokenshotgun.runlines.domain.model
 
-data class Actor(val name: String) {
+import com.google.gson.annotations.SerializedName
+
+data class Actor(
+    @field:SerializedName("name") val name: String
+) {
     override fun toString(): String = name
 
     companion object {

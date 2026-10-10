@@ -1,6 +1,7 @@
 package com.brokenshotgun.runlines.domain.model
 
 import com.google.gson.Gson
+import com.google.gson.JsonParser
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -44,5 +45,27 @@ class ScriptPreferencesTest {
         val restoredScript = gson.fromJson(gson.toJson(script), Script::class.java)
 
         assertTrue(restoredScript.scenes.single().isLoaded)
+    }
+
+    @Test
+    fun serializedModelFieldsKeepTheirPersistedJsonNames() {
+        val script = Script("Test script").apply {
+            actors.add(Actor("MAYA"))
+            scenes.add(Scene(name = "Opening").apply {
+                lines.add(Line(Actor("MAYA"), "Hello"))
+            })
+        }
+
+        val json = JsonParser.parseString(gson.toJson(script)).asJsonObject
+
+        assertTrue(json.has("name"))
+        assertTrue(json.has("actors"))
+        assertTrue(json.has("scenes"))
+        assertTrue(json.getAsJsonArray("actors")[0].asJsonObject.has("name"))
+        val scene = json.getAsJsonArray("scenes")[0].asJsonObject
+        assertTrue(scene.has("name"))
+        val line = scene.getAsJsonArray("lines")[0].asJsonObject
+        assertTrue(line.has("actor"))
+        assertTrue(line.has("line"))
     }
 }

@@ -4,20 +4,21 @@ import com.google.gson.annotations.SerializedName
 import kotlin.jvm.JvmOverloads
 
 data class Script @JvmOverloads constructor(
-    var name: String,
-    var credit: String? = null,
-    var author: String? = null,
-    var source: String? = null,
-    var draftDate: String? = null,
-    var contact: String? = null,
-    val actors: MutableList<Actor> = mutableListOf(),
-    val scenes: MutableList<Scene> = mutableListOf(),
-    val allVoices: MutableList<String> = mutableListOf(),
-    val actorVoices: MutableMap<String, String> = mutableMapOf(),
-    var id: Long = -1L,
-    @SerializedName("mutedCharacterNames")
+    @field:SerializedName("name") var name: String,
+    @field:SerializedName("credit") var credit: String? = null,
+    @field:SerializedName("author") var author: String? = null,
+    @field:SerializedName("source") var source: String? = null,
+    @field:SerializedName("draftDate") var draftDate: String? = null,
+    @field:SerializedName("contact") var contact: String? = null,
+    @field:SerializedName("actors") val actors: MutableList<Actor> = mutableListOf(),
+    @field:SerializedName("scenes") val scenes: MutableList<Scene> = mutableListOf(),
+    @field:SerializedName("allVoices") val allVoices: MutableList<String> = mutableListOf(),
+    @field:SerializedName("actorVoices") val actorVoices: MutableMap<String, String> = mutableMapOf(),
+    @field:SerializedName("id") var id: Long = -1L,
+    @field:SerializedName("mutedCharacterNames")
     private var persistedMutedCharacterNames: MutableSet<String>? = mutableSetOf()
 ) {
+    @field:SerializedName("defaultVoice")
     var defaultVoice: String? = null
     @Transient
     private var pendingSceneActorReplacements: MutableMap<String, String>? = null
