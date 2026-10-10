@@ -4,6 +4,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -47,5 +48,22 @@ class FountainEmphasisTest {
                 }
             )
         }
+    }
+
+    @Test
+    fun supportsFountainLongerAsteriskRunsAndEscapedMarkers() {
+        val text = "****bold**** *****bold italics***** \\*literal\\* *69 and *word\ncontinues*"
+
+        val annotated = text.toFountainAnnotatedString()
+
+        assertEquals("bold bold italics *literal* *69 and *word\ncontinues*", annotated.text)
+        assertTrue(annotated.spanStyles.any { it.item.fontWeight == FontWeight.Bold })
+        assertTrue(
+            annotated.spanStyles.any {
+                it.item.fontWeight == FontWeight.Bold && it.item.fontStyle == FontStyle.Italic
+            }
+        )
+        val wordStart = annotated.text.indexOf("word")
+        assertFalse(annotated.spanStyles.any { it.start <= wordStart && it.end > wordStart })
     }
 }

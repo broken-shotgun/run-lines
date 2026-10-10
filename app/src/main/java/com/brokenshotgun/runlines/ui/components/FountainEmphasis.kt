@@ -28,16 +28,23 @@ internal fun String.toFountainAnnotatedString(): AnnotatedString {
     var index = 0
 
     while (index < length) {
+        if (this[index] == '\n') {
+            openDelimiters.clear()
+            index++
+            continue
+        }
         val marker = emphasisMarkerAt(index)
-        if (marker == null) {
+        if (marker == null || isEscaped(index)) {
             index++
             continue
         }
 
         val delimiter = EmphasisDelimiter(index, marker)
-        if (openDelimiters.lastOrNull()?.marker == marker) {
+        val canClose = index > 0 && !this[index - 1].isWhitespace()
+        val canOpen = index + marker.length < length && !this[index + marker.length].isWhitespace()
+        if (canClose && openDelimiters.lastOrNull()?.marker == marker) {
             pairs += EmphasisPair(openDelimiters.removeAt(openDelimiters.lastIndex), delimiter)
-        } else {
+        } else if (canOpen) {
             openDelimiters += delimiter
         }
         index += marker.length
@@ -54,6 +61,15 @@ internal fun String.toFountainAnnotatedString(): AnnotatedString {
     index = 0
 
     while (index < length) {
+        if (this[index] == '\\' && index + 1 < length) {
+            val escapedMarker = emphasisMarkerAt(index + 1)
+            if (escapedMarker != null && isEscaped(index + 1)) {
+                renderedText.append(escapedMarker)
+                index += escapedMarker.length + 1
+                continue
+            }
+        }
+
         val markerLength = markerLengths[index]
         if (markerLength != null) {
             index += markerLength
@@ -67,6 +83,8 @@ internal fun String.toFountainAnnotatedString(): AnnotatedString {
                     "*" -> current.copy(fontStyle = FontStyle.Italic)
                     "**" -> current.copy(fontWeight = FontWeight.Bold)
                     "***" -> current.copy(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)
+                    "****" -> current.copy(fontWeight = FontWeight.Bold)
+                    "*****" -> current.copy(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)
                     "_" -> current.copy(textDecoration = TextDecoration.Underline)
                     else -> current
                 }
@@ -101,6 +119,18 @@ private fun String.emphasisMarkerAt(index: Int): String? {
         1 -> "*"
         2 -> "**"
         3 -> "***"
+        4 -> "****"
+        5 -> "*****"
         else -> null
     }
+}
+
+private fun String.isEscaped(index: Int): Boolean {
+    var backslashCount = 0
+    var cursor = index - 1
+    while (cursor >= 0 && this[cursor] == '\\') {
+        backslashCount++
+        cursor--
+    }
+    return backslashCount % 2 == 1
 }

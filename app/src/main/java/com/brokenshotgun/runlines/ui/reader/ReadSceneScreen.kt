@@ -1135,7 +1135,10 @@ fun ReadSceneScreen(
 
                 item {
                     Text(
-                        text = currentScene.name?.uppercase() ?: "UNTITLED SCENE",
+                        text = buildString {
+                            append(currentScene.name?.uppercase() ?: "UNTITLED SCENE")
+                            currentScene.fountainSceneNumber?.let { append(" #$it") }
+                        },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
