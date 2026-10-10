@@ -518,7 +518,10 @@ fun ReadSceneScreen(
             .distinctBy { it.name }
             .sortedWith(compareBy<android.speech.tts.Voice> {
                 if (it.locale.language == "en") 0 else 1
-            }.thenBy { it.name.lowercase() })
+            }.thenBy { it.locale.country.uppercase(Locale.ROOT) }
+                .thenComparator { first, second ->
+                    compareVoiceNamesNaturally(first.name, second.name)
+                })
             .mapNotNull { it.name }
             .toList()
     }
@@ -559,11 +562,27 @@ fun ReadSceneScreen(
         val availableVoices = (playableVoices + fallbackVoices + listOfNotNull(scriptState.defaultVoice))
             .distinct()
             .filter { it.isNotBlank() && it != "Default" }
-            .sortedWith(compareBy<String> { voiceName ->
-                val voiceLocale = allVoices.firstOrNull { it.name == voiceName }?.locale
-                val localeKey = voiceLocale?.language ?: ""
-                if (localeKey == "en") 0 else 1
-            }.thenBy { it.lowercase() })
+            .sortedWith { first, second ->
+                val firstVoice = allVoices.firstOrNull { it.name == first }
+                val secondVoice = allVoices.firstOrNull { it.name == second }
+                val languageComparison = compareValues(
+                    if (firstVoice?.locale?.language == "en") 0 else 1,
+                    if (secondVoice?.locale?.language == "en") 0 else 1
+                )
+                if (languageComparison != 0) {
+                    languageComparison
+                } else {
+                    val countryComparison = compareValues(
+                        firstVoice?.locale?.country.orEmpty().uppercase(Locale.ROOT),
+                        secondVoice?.locale?.country.orEmpty().uppercase(Locale.ROOT)
+                    )
+                    if (countryComparison != 0) {
+                        countryComparison
+                    } else {
+                        compareVoiceNamesNaturally(first, second)
+                    }
+                }
+            }
         voiceDialogOptions = createVoiceOptions(listOf("Default") + availableVoices, allVoices)
         val sceneCharacterNames = currentScene.lines
             .map { it.actor.name.uppercase() }
@@ -915,7 +934,10 @@ fun ReadSceneScreen(
                     .distinctBy { it.name }
                     .sortedWith(compareBy<android.speech.tts.Voice> {
                         if (it.locale.language == "en") 0 else 1
-                    }.thenBy { it.name.lowercase() })
+                    }.thenBy { it.locale.country.uppercase(Locale.ROOT) }
+                        .thenComparator { first, second ->
+                            compareVoiceNamesNaturally(first.name, second.name)
+                        })
                     .mapNotNull { it.name }
                     .toList()
                 val languagePriority = voices.associate { voice ->
@@ -934,7 +956,12 @@ fun ReadSceneScreen(
             .filter { it.isNotBlank() && it != "Default" }
             .sortedWith(compareBy<String> { voiceName ->
                 voiceLanguagePriority[voiceName] ?: 1
-            }.thenBy { it.lowercase() })
+            }.thenBy { voiceName ->
+                allVoices.firstOrNull { it.name == voiceName }?.locale?.country.orEmpty()
+                    .uppercase(Locale.ROOT)
+            }.thenComparator { first, second ->
+                compareVoiceNamesNaturally(first, second)
+            })
         voiceDialogOptions = createVoiceOptions(listOf("Default") + availableVoiceNames, allVoices)
         engine.setOnUtteranceProgressListener(ReadSceneTTSListener { utteranceId ->
             val utteranceMatch = UTTERANCE_ID_PATTERN.matchEntire(utteranceId.orEmpty())
@@ -1797,6 +1824,13 @@ private data class VoiceOption(
     val kind: VoiceOptionKind
 )
 
+private data class TtsVoiceDisplayDetails(
+    val name: String,
+    val countryCode: String,
+    val languageCode: String,
+    val language: String
+)
+
 private fun createVoiceOptions(
     voiceNames: List<String>,
     voices: List<android.speech.tts.Voice>
@@ -1812,14 +1846,23 @@ private fun createVoiceOptions(
         }
         .map { name ->
             val voice = voicesByName[name]
-            val localeLabel = voice?.locale?.getDisplayName(Locale.getDefault())
-                ?.takeIf { it.isNotBlank() }
-                ?: "Voice"
+            val locale = voice?.locale
             val language = voice?.locale?.getDisplayLanguage(Locale.getDefault())
                 ?.takeIf { it.isNotBlank() }
                 ?: "Other"
             val isEnglish = voice?.locale?.language == Locale.ENGLISH.language
-            Triple(name, localeLabel, if (isEnglish) "English" else language)
+            TtsVoiceDisplayDetails(
+                name = name,
+                countryCode = locale?.country
+                    ?.takeIf { it.isNotBlank() }
+                    ?.uppercase(Locale.ROOT)
+                    ?: locale?.language
+                        ?.takeIf { it.isNotBlank() }
+                        ?.uppercase(Locale.ROOT)
+                    ?: "ZZ",
+                languageCode = locale?.language.orEmpty(),
+                language = if (isEnglish) "English" else language
+            )
         }
     val specialOptions = if (voiceNames.contains("Default")) {
         listOf(
@@ -1832,17 +1875,24 @@ private fun createVoiceOptions(
     }
 
     return specialOptions + voiceDetails
-        .groupBy { (_, localeLabel, language) -> localeLabel to language }
-        .values
-        .flatMap { options ->
-            options.mapIndexed { index, (name, localeLabel, language) ->
-                val voiceNumber = Regex("(?:_|-)(\\d+)(?:-|$)")
-                    .find(name.lowercase(Locale.ROOT))
-                    ?.groupValues
-                    ?.get(1)
-                    ?: (index + 1).takeIf { options.size > 1 }?.toString()
-                val variantLabel = "Voice" + (voiceNumber?.let { " $it" } ?: "")
-                VoiceOption(name, "$localeLabel · $variantLabel", language, VoiceOptionKind.VOICE)
+        .groupBy { it.countryCode }
+        .entries
+        .flatMap { (countryCode, countryVoices) ->
+            val sortedVoices = countryVoices.sortedWith(
+                compareBy<TtsVoiceDisplayDetails> { it.languageCode }
+                    .thenComparator { first, second ->
+                        compareVoiceNamesNaturally(first.name, second.name)
+                    }
+            )
+            val numberWidth = maxOf(2, sortedVoices.size.toString().length)
+            sortedVoices.mapIndexed { index, voice ->
+                val voiceNumber = (index + 1).toString().padStart(numberWidth, '0')
+                VoiceOption(
+                    voice.name,
+                    "$countryCode-$voiceNumber (${voice.name})",
+                    voice.language,
+                    VoiceOptionKind.VOICE
+                )
             }
         }.sortedWith(compareBy<VoiceOption> {
             when {
@@ -1853,6 +1903,48 @@ private fun createVoiceOptions(
         }.thenBy { it.language.lowercase(Locale.getDefault()) }
             .thenBy { it.kind.ordinal }
             .thenBy { it.label.lowercase(Locale.getDefault()) })
+}
+
+private fun compareVoiceNamesNaturally(first: String, second: String): Int {
+    var firstIndex = 0
+    var secondIndex = 0
+
+    while (firstIndex < first.length && secondIndex < second.length) {
+        val firstChar = first[firstIndex]
+        val secondChar = second[secondIndex]
+        if (firstChar in '0'..'9' && secondChar in '0'..'9') {
+            var firstEnd = firstIndex
+            while (firstEnd < first.length && first[firstEnd] in '0'..'9') firstEnd++
+            var secondEnd = secondIndex
+            while (secondEnd < second.length && second[secondEnd] in '0'..'9') secondEnd++
+
+            val firstDigits = first.substring(firstIndex, firstEnd)
+            val secondDigits = second.substring(secondIndex, secondEnd)
+            val firstSignificantDigits = firstDigits.trimStart('0').ifEmpty { "0" }
+            val secondSignificantDigits = secondDigits.trimStart('0').ifEmpty { "0" }
+            val numericLengthComparison = compareValues(
+                firstSignificantDigits.length,
+                secondSignificantDigits.length
+            )
+            if (numericLengthComparison != 0) return numericLengthComparison
+
+            val numericComparison = firstSignificantDigits.compareTo(secondSignificantDigits)
+            if (numericComparison != 0) return numericComparison
+
+            val leadingZeroComparison = compareValues(firstDigits.length, secondDigits.length)
+            if (leadingZeroComparison != 0) return leadingZeroComparison
+
+            firstIndex = firstEnd
+            secondIndex = secondEnd
+        } else {
+            val characterComparison = firstChar.lowercaseChar().compareTo(secondChar.lowercaseChar())
+            if (characterComparison != 0) return characterComparison
+            firstIndex++
+            secondIndex++
+        }
+    }
+
+    return compareValues(first.length - firstIndex, second.length - secondIndex)
 }
 
 private data class VoiceAssignment(
