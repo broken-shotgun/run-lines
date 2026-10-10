@@ -175,7 +175,7 @@ fun LineEditRow(
 
             if (line.line.isNotBlank()) {
                 Text(
-                    text = line.line,
+                    text = line.line.toFountainAnnotatedString(),
                     color = if (isLineMuted && !isRevealed) Color.Black else MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,
                     style = if (isActionLine) MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium) else MaterialTheme.typography.bodyLarge,
