@@ -20,10 +20,10 @@ object FountainSerializer {
     private const val UNIVERSAL_LINE_BREAKS_TEMPLATE = "\n"
 
     /** Patterns */
-    private const val SCENE_HEADER_PATTERN       = "(?<=\\n)(([iI][nN][tT]|[eE][xX][tT]|[^\\w][eE][sS][tT]|\\.|[iI]\\.?/[eE]\\.?)([^\\n]+))\\n"
+    private const val SCENE_HEADER_PATTERN       = "(?<=\\n)((?:(?i:INT|EXT|EST)(?:\\.?/EXT\\.?)?|(?i:I\\.?/E\\.?))(?:\\.|\\s)[^\\n]*|\\.[A-Za-z0-9][^\\n]*)\\n"
     private const val ACTION_PATTERN             = "([^<>]*?)(\\n{2}|\\n<)"
     private const val MULTI_LINE_ACTION_PATTERN  = "\n{2}(([^a-z\\n:]+?[\\.\\?,\\s!\\*_]*?)\n{2}){1,2}"
-    private const val CHARACTER_CUE_PATTERN      = "(?<=\\n)([ \\t]*[^<>a-z\\s\\/\\n][^<>a-z:!\\?\\n]*[^<>a-z\\(!\\?:,\\n\\.][ \\t]?)\\n{1}(?!\\n)"
+    private const val CHARACTER_CUE_PATTERN      = "(?<=\\n)(?![ \\t]*!)([ \\t]*(?:@[^<>\\n]+|[^<>a-z\\s\\/\\n][^<>a-z:!\\?\\n]*[^<>a-z\\(!\\?:,\\n\\.][ \\t]?))\\n{1}(?!\\n)"
     private const val DIALOGUE_PATTERN           = "(<(Character|Parenthetical)>[^<>\\n]+<\\/(Character|Parenthetical)>)([^<>]*?)(?=\\n{2}|\\n{1}<Parenthetical>)"
     private const val PARENTHETICAL_PATTERN      = "(\\([^<>]*?\\)[\\s]?)\n"
     private const val TRANSITION_PATTERN         = "\\n([\\*_]*([^<>\\na-z]*TO:|FADE TO BLACK\\.|FADE OUT\\.|CUT TO BLACK\\.)[\\*_]*)\\n"
@@ -127,6 +127,7 @@ object FountainSerializer {
             if (!sceneName.startsWith("INT.") && !sceneName.startsWith("EXT.")) {
                 sceneName = ".$sceneName"
             }
+            scene.fountainSceneNumber?.let { sceneName += " #$it#" }
             builder.append(sceneName).append("\n\n")
             for (line in scene.lines) {
                 val actorName = line.actor.name.uppercase(Locale.getDefault())
@@ -165,7 +166,10 @@ object FountainSerializer {
         for (element in bodyTokens) {
             when (element.elementType) {
                 "Scene Heading" -> {
-                    currentScene = Scene(element.elementText)
+                    currentScene = Scene(
+                        name = element.elementText,
+                        fountainSceneNumber = element.sceneNumber.takeIf { it.isNotBlank() }
+                    )
                     script.scenes.add(currentScene)
                 }
                 "Transition", "Action" -> currentScene.addAction(element.elementText)
@@ -263,19 +267,33 @@ object FountainSerializer {
 
             // Deal with scene numbers if we are in a scene heading
             if (elementType == "Scene Heading") {
-                val sceneNumberMatch = SCENE_HEADER_PATTERN.toRegex(RegexOption.IGNORE_CASE).find(cleanedText)
+                val sceneNumberMatch = SCENE_NUMBER_PATTERN.toRegex().find(cleanedText)
                 if (sceneNumberMatch != null) {
-                    val fullSceneNumberText = sceneNumberMatch.groupValues[1]
                     val sceneNumber = sceneNumberMatch.groupValues[2]
                     element.sceneNumber = sceneNumber
-                    cleanedText = cleanedText.replace(fullSceneNumberText, "", true)
+                    cleanedText = cleanedText.replace(sceneNumberMatch.value, "").trimEnd()
                 }
             }
 
             element.elementType = elementType
-            element.elementText = cleanedText.trim()
+            element.elementText = if (elementType == "Action") {
+                cleanedText.replace("\t", "    ").trim('\n', '\r')
+            } else {
+                cleanedText.trim()
+            }
 
             // More refined processing of elements based on text/type
+            if (element.elementType == "Character" && element.elementText.startsWith("@")) {
+                element.elementText = element.elementText.substring(1).trim()
+            }
+            if (element.elementType == "Action") {
+                element.elementText = element.elementText
+                    .replace("^[!~]".toRegex(), "")
+            }
+            if (element.elementType == "Transition") {
+                element.elementText = element.elementText.replace("^>\\s*".toRegex(), "")
+            }
+
             val centeredTextMatch = CENTERED_TEXT_PATTERN.toRegex().find(element.elementText)
             if (centeredTextMatch != null) {
                 element.isCentered = true

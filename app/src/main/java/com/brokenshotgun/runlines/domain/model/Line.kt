@@ -1,17 +1,21 @@
 package com.brokenshotgun.runlines.domain.model
 
+import com.google.gson.annotations.SerializedName
 import java.util.regex.Pattern
 import kotlin.jvm.JvmOverloads
 
 data class Line @JvmOverloads constructor(
-    var actor: Actor,
-    var line: String,
-    var order: Int = 0,
+    @field:SerializedName("actor") var actor: Actor,
+    @field:SerializedName("line") var line: String,
+    @field:SerializedName("order") var order: Int = 0,
+    @field:SerializedName("characterExtensions")
     val characterExtensions: MutableList<String> = mutableListOf()
 ) {
+    @field:SerializedName("enabled")
     var enabled: Boolean = true
         private set
 
+    @field:SerializedName("lineHtml")
     private var lineHtml: String? = null
 
     companion object {
