@@ -1,8 +1,10 @@
 package com.brokenshotgun.runlines.ui.home
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.brokenshotgun.runlines.R
 import com.brokenshotgun.runlines.domain.model.Script
 import com.brokenshotgun.runlines.domain.model.ScriptNameNormalizer
 import com.brokenshotgun.runlines.domain.repository.ScriptRepository
@@ -23,6 +25,7 @@ data class HomeUiState(
     val scripts: List<Script> = emptyList(),
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
+    @get:StringRes val errorMessageResourceId: Int? = null,
     val exportedFilePath: String? = null
 )
 
@@ -45,7 +48,7 @@ class HomeViewModel(
 
     fun refreshScripts() {
         viewModelScope.launch {
-            _uiState.update { it.copy(errorMessage = null) }
+            _uiState.update { it.copy(errorMessage = null, errorMessageResourceId = null) }
             try {
                 val scripts = getScripts()
                 _uiState.update { it.copy(scripts = scripts, isLoading = false) }
@@ -53,7 +56,12 @@ class HomeViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "Could not load scripts"
+                        errorMessage = error.message,
+                        errorMessageResourceId = if (error.message == null) {
+                            R.string.error_could_not_load_scripts
+                        } else {
+                            null
+                        }
                     )
                 }
             }
@@ -69,7 +77,10 @@ class HomeViewModel(
                 refreshScripts()
             } catch (error: Exception) {
                 _uiState.update {
-                    it.copy(errorMessage = error.message ?: "Could not create script")
+                    it.copy(
+                        errorMessage = error.message,
+                        errorMessageResourceId = if (error.message == null) R.string.error_could_not_create_script else null
+                    )
                 }
             }
         }
@@ -87,7 +98,10 @@ class HomeViewModel(
                 refreshScripts()
             } catch (error: Exception) {
                 _uiState.update {
-                    it.copy(errorMessage = error.message ?: "Could not rename script")
+                    it.copy(
+                        errorMessage = error.message,
+                        errorMessageResourceId = if (error.message == null) R.string.error_could_not_rename_script else null
+                    )
                 }
             }
         }
@@ -100,7 +114,10 @@ class HomeViewModel(
                 refreshScripts()
             } catch (error: Exception) {
                 _uiState.update {
-                    it.copy(errorMessage = error.message ?: "Could not delete script")
+                    it.copy(
+                        errorMessage = error.message,
+                        errorMessageResourceId = if (error.message == null) R.string.error_could_not_delete_script else null
+                    )
                 }
             }
         }
@@ -111,18 +128,27 @@ class HomeViewModel(
             try {
                 val filePath = exportScriptUseCase(script)
                 _uiState.update {
-                    it.copy(exportedFilePath = filePath, errorMessage = null)
+                    it.copy(
+                        exportedFilePath = filePath,
+                        errorMessage = null,
+                        errorMessageResourceId = null
+                    )
                 }
             } catch (error: Exception) {
                 _uiState.update {
-                    it.copy(errorMessage = error.message ?: "Could not export script")
+                    it.copy(
+                        errorMessage = error.message,
+                        errorMessageResourceId = if (error.message == null) R.string.error_could_not_export_script else null
+                    )
                 }
             }
         }
     }
 
     fun clearMessages() {
-        _uiState.update { it.copy(errorMessage = null, exportedFilePath = null) }
+        _uiState.update {
+            it.copy(errorMessage = null, errorMessageResourceId = null, exportedFilePath = null)
+        }
     }
 
     companion object {

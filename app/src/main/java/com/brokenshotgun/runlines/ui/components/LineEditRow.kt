@@ -14,12 +14,14 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.brokenshotgun.runlines.domain.model.Actor
 import com.brokenshotgun.runlines.domain.model.Line
+import com.brokenshotgun.runlines.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,6 +41,8 @@ fun LineEditRow(
     onCancel: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val selectLineLabel = stringResource(R.string.line_select)
+    val hiddenLineLabel = stringResource(R.string.line_hidden)
     val isActionLine = line.actor == Actor.ACTION
     var isRevealed by remember(line.actor.name, isLineMuted) { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
@@ -54,7 +58,7 @@ fun LineEditRow(
     val interactionModifier = if (isLineMuted) {
         Modifier
             .semantics {
-                onClick(label = "Select line") {
+                onClick(label = selectLineLabel) {
                     onClick()
                     true
                 }
@@ -105,7 +109,7 @@ fun LineEditRow(
                             expanded = true
                             onActorValueChange(it)
                         },
-                        label = { Text("Character") },
+                        label = { Text(stringResource(R.string.common_character)) },
                         singleLine = true,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -132,7 +136,7 @@ fun LineEditRow(
                 OutlinedTextField(
                     value = editingLineText,
                     onValueChange = onLineValueChange,
-                    label = { Text("Line") },
+                    label = { Text(stringResource(R.string.line_label)) },
                     minLines = 2,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -142,7 +146,7 @@ fun LineEditRow(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextButton(onClick = onCancel) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.common_cancel))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
@@ -152,11 +156,11 @@ fun LineEditRow(
                             contentColor = MaterialTheme.colorScheme.onError
                         )
                     ) {
-                        Text("Delete")
+                        Text(stringResource(R.string.common_delete))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(onClick = onSave) {
-                        Text("Save")
+                        Text(stringResource(R.string.common_save))
                     }
                 }
             }
@@ -186,7 +190,7 @@ fun LineEditRow(
                         .then(
                             if (isLineMuted && !isRevealed) {
                                 Modifier.clearAndSetSemantics {
-                                    contentDescription = "Hidden line"
+                                    contentDescription = hiddenLineLabel
                                 }
                             } else {
                                 Modifier
@@ -196,7 +200,7 @@ fun LineEditRow(
             }
             if (isLineMuted) {
                 TextButton(onClick = onLongClick) {
-                    Text("Edit line")
+                    Text(stringResource(R.string.line_edit))
                 }
             }
         }

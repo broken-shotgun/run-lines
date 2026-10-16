@@ -37,4 +37,20 @@ class ScriptContentParserTest {
         assertEquals("My Play", titledScript.name)
         assertEquals("fallback", untitledScript.name)
     }
+
+    @Test
+    fun usesLocalizedFallbackNamesWhenParsingUntitledScripts() {
+        val localizedParser = FountainScriptContentParser(
+            untitledScriptName = "Untitled screenplay",
+            untitledSceneName = "Untitled screenplay scene"
+        )
+
+        val script = localizedParser.parse(
+            "fallback.fountain",
+            "Title: Untitled screenplay\n\n"
+        )
+
+        assertEquals("fallback", script.name)
+        assertEquals("Untitled screenplay scene", script.scenes.single().name)
+    }
 }

@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.lifecycle.lifecycleScope
 import com.brokenshotgun.runlines.data.importing.FountainScriptContentParser
+import com.brokenshotgun.runlines.R
 import com.brokenshotgun.runlines.domain.usecase.ImportScriptUseCase
 import com.brokenshotgun.runlines.ui.navigation.AppNavigation
 import com.brokenshotgun.runlines.ui.reader.playback.TtsPlaybackController
@@ -78,21 +79,28 @@ class MainActivity : ComponentActivity() {
                         extractPdfText(uri)
                     } else {
                         contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
-                            ?: error("Could not open the selected file")
+                            ?: error(getString(R.string.error_could_not_open_selected_file))
                     }
                     ImportScriptUseCase(
                         repository = appContainer.repository,
-                        parser = FountainScriptContentParser()
+                        parser = FountainScriptContentParser(
+                            untitledScriptName = getString(R.string.playback_untitled_script),
+                            untitledSceneName = getString(R.string.scene_untitled)
+                        )
                     )(fileName, content)
                 }
-                Toast.makeText(this@MainActivity, "Script imported successfully", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this@MainActivity,
+                    getString(R.string.home_script_imported),
+                    Toast.LENGTH_SHORT
+                ).show()
                 onImportCompleted?.invoke()
                 onImportCompleted = null
             } catch (error: Exception) {
                 onImportCompleted = null
                 Toast.makeText(
                     this@MainActivity,
-                    error.message ?: "Could not import script",
+                    error.message ?: getString(R.string.error_could_not_import_script),
                     Toast.LENGTH_LONG
                 ).show()
             }
@@ -108,11 +116,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        return uri.lastPathSegment?.substringAfterLast('/') ?: "script.txt"
+        return uri.lastPathSegment?.substringAfterLast('/')
+            ?: getString(R.string.default_script_filename)
     }
 
     private fun extractPdfText(uri: Uri): String {
-        val input = contentResolver.openInputStream(uri) ?: error("Could not open the selected PDF")
+        val input = contentResolver.openInputStream(uri)
+            ?: error(getString(R.string.error_could_not_open_selected_pdf))
         return input.use {
             PDDocument.load(it, MemoryUsageSetting.setupTempFileOnly()).use { document ->
                 PDFTextStripper().getText(document)

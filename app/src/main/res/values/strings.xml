@@ -1,3 +1,141 @@
-<resources>
-    <string name="app_name">Run Lines</string>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <!-- Product name. Keep unchanged. -->
+    <string name="app_name" translatable="false">Run Lines</string>
+
+    <string name="home_new_script">New Script</string>
+    <string name="home_import_script">Import Script</string>
+    <string name="home_add_script_title">Add Script</string>
+    <string name="home_saved_fountain">Saved Fountain to <xliff:g id="file_path" example="/storage/Documents/script.fountain">%1$s</xliff:g></string>
+    <string name="home_script_imported">Script imported successfully</string>
+    <string name="home_script_name_label">Script name</string>
+
+    <string name="script_list_title">Your Scripts</string>
+    <string name="script_list_empty">No scripts found</string>
+    <string name="script_options">Script options</string>
+    <string name="script_rename">Rename script</string>
+    <string name="script_save_fountain">Save Fountain</string>
+    <string name="script_delete">Delete script</string>
+    <string name="script_delete_title">Delete script?</string>
+    <string name="script_delete_confirmation">Delete <xliff:g id="script_name" example="My script">%1$s</xliff:g> and all of its scenes and lines? This cannot be undone.</string>
+
+    <string name="line_select">Select line</string>
+    <string name="line_hidden">Hidden line</string>
+    <string name="line_edit">Edit line</string>
+    <string name="line_label">Line</string>
+
+    <string name="common_character">Character</string>
+    <string name="common_voice">Voice</string>
+    <string name="common_default">Default</string>
+    <string name="common_add">Add</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_delete">Delete</string>
+    <string name="common_save">Save</string>
+    <string name="common_back">Back</string>
+    <string name="common_close">Close</string>
+    <string name="common_retry">Retry</string>
+    <string name="common_selected">Selected</string>
+    <string name="common_rename">Rename</string>
+    <string name="common_other">Other</string>
+
+    <string name="scene_options">Scene options</string>
+    <string name="scene_stop_at_end">Stop at scene end</string>
+    <string name="scene_character_lines">Character lines</string>
+    <string name="scene_character_voices">Character voices</string>
+    <string name="scene_add_line">Add line</string>
+    <string name="scene_play_pause">Play/Pause</string>
+    <string name="scene_empty_title">No scenes yet</string>
+    <string name="scene_empty_message">Add a scene to get started.</string>
+    <string name="scene_add">Add scene</string>
+    <string name="scene_choose">Choose scene</string>
+    <string name="scene_untitled">Untitled scene</string>
+    <string name="scene_this">this scene</string>
+    <!-- Fallback scene heading shown in uppercase in the reader. -->
+    <string name="scene_untitled_heading">UNTITLED SCENE</string>
+    <string name="scene_not_loaded">Scene not loaded</string>
+    <string name="scene_delete_title">Delete scene?</string>
+    <string name="scene_delete_confirmation">Delete <xliff:g id="scene_name" example="INT. OFFICE - DAY">%1$s</xliff:g> and all of its lines? This cannot be undone.</string>
+    <string name="scene_insert">Insert</string>
+    <string name="scene_insert_after">After current scene</string>
+    <string name="scene_insert_before">Before current scene</string>
+    <string name="scene_heading_prefix">Heading prefix</string>
+    <string name="scene_name">Scene name</string>
+    <string name="scene_location_time_placeholder">Location - Time</string>
+    <string name="scene_select_title">Select scene</string>
+    <string name="scene_search">Search scenes</string>
+    <string name="scene_search_word">Scene</string>
+    <string name="scene_search_empty">No scenes found</string>
+    <string name="error_scene_not_found">Scene could not be found</string>
+    <string name="scene_number_label">Scene <xliff:g id="scene_number" example="1">%1$d</xliff:g></string>
+    <string name="scene_number_title_label">Scene <xliff:g id="scene_number" example="1">%1$d</xliff:g> • <xliff:g id="scene_name" example="INT. OFFICE - DAY">%2$s</xliff:g></string>
+    <!-- Standard screenplay slugline abbreviations; keep unchanged. -->
+    <string name="scene_prefix_int" translatable="false">INT.</string>
+    <string name="scene_prefix_ext" translatable="false">EXT.</string>
+    <string name="scene_prefix_est" translatable="false">EST.</string>
+    <string name="scene_prefix_int_ext_dotted" translatable="false">INT./EXT.</string>
+    <string name="scene_prefix_int_ext" translatable="false">INT/EXT.</string>
+    <string name="scene_prefix_ie" translatable="false">I/E.</string>
+
+    <string name="scene_unsaved_title">Unsaved changes</string>
+    <string name="scene_unsaved_message">You have edits that haven\'t been saved. Save them before leaving or discard them.</string>
+    <string name="scene_save_and_leave">Save &amp; leave</string>
+    <string name="scene_discard">Discard</string>
+    <string name="scene_keep_editing">Keep editing</string>
+    <string name="scene_undo_edit">Undo edit</string>
+    <string name="scene_redo_edit">Redo edit</string>
+
+    <string name="voice_random_english">Random English</string>
+    <string name="voice_random_all">Random All</string>
+    <string name="voice_scene_characters">Characters in this scene</string>
+    <string name="voice_script_characters">Characters in the script</string>
+    <string name="voice_add_character">Add character</string>
+    <string name="voice_remove_character">Remove character</string>
+    <string name="voice_remove_character_title">Remove character?</string>
+    <string name="voice_transfer_lines">Transfer all lines for <xliff:g id="character_name" example="ALEX">%1$s</xliff:g> to the selected character? The transfer will be applied when you save Character voices.</string>
+    <string name="voice_transfer_lines_to">Transfer lines to</string>
+    <string name="voice_no_english_available">No English voices are available.</string>
+    <string name="voice_none_available">No voices are available.</string>
+    <string name="voice_choose_replacement">Choose a character in the script to receive these lines.</string>
+
+    <string name="character_lines_description">Turn lines on or off for the whole script.</string>
+    <string name="character_lines_all_on">All on</string>
+    <string name="character_lines_all_off">All off</string>
+
+    <string name="navigation_opening_script">Opening script…</string>
+    <string name="navigation_could_not_open_script">Could not open script</string>
+    <string name="error_could_not_load_scene">Could not load scene</string>
+    <string name="error_could_not_load_scripts">Could not load scripts</string>
+    <string name="error_could_not_create_script">Could not create script</string>
+    <string name="error_could_not_rename_script">Could not rename script</string>
+    <string name="error_could_not_delete_script">Could not delete script</string>
+    <string name="error_could_not_export_script">Could not export script</string>
+    <string name="error_could_not_create_export_directory">Could not create export directory: <xliff:g id="directory_path" example="/storage/Documents/Run Lines">%1$s</xliff:g></string>
+    <string name="error_script_not_found">Script not found</string>
+    <string name="error_could_not_load_script">Could not load script</string>
+    <string name="error_could_not_save_script">Could not save script</string>
+    <string name="error_could_not_delete_scene">Could not delete scene</string>
+    <string name="error_could_not_add_scene">Could not add scene</string>
+    <string name="error_could_not_import_script">Could not import script</string>
+    <string name="error_could_not_open_selected_file">Could not open the selected file</string>
+    <string name="error_could_not_open_selected_pdf">Could not open the selected PDF</string>
+    <string name="default_script_filename" translatable="false">script.txt</string>
+
+    <!-- Fallback title shown in playback and used for title-less imported scripts. -->
+    <string name="playback_untitled_script">Untitled script</string>
+    <string name="playback_notification_channel">Script Reader Playback</string>
+    <string name="playback_notification_description">Playback controls for spoken scripts</string>
+    <string name="playback_playing">Playing</string>
+    <string name="playback_paused">Paused</string>
+    <string name="playback_play">Play</string>
+    <string name="playback_pause">Pause</string>
+    <string name="playback_stop">Stop</string>
+    <string name="playback_remaining_minutes_seconds"><xliff:g id="minutes">%1$s</xliff:g> <xliff:g id="seconds">%2$s</xliff:g> left</string>
+    <string name="playback_remaining_seconds_left"><xliff:g id="seconds">%1$s</xliff:g> left</string>
+    <plurals name="playback_remaining_minutes">
+        <item quantity="one"><xliff:g id="minutes" example="1">%1$d</xliff:g> min</item>
+        <item quantity="other"><xliff:g id="minutes" example="2">%1$d</xliff:g> min</item>
+    </plurals>
+    <plurals name="playback_remaining_seconds">
+        <item quantity="one"><xliff:g id="seconds" example="1">%1$d</xliff:g> sec</item>
+        <item quantity="other"><xliff:g id="seconds" example="30">%1$d</xliff:g> sec</item>
+    </plurals>
 </resources>

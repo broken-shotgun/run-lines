@@ -18,7 +18,6 @@ android {
         targetSdk 37
         versionCode 38
         versionName "1.0.1"
-        resConfigs "en"
     }
     buildTypes {
         release {

@@ -6,6 +6,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -16,6 +17,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.brokenshotgun.runlines.domain.model.Script
 import com.brokenshotgun.runlines.domain.model.ScriptNameNormalizer
 import com.brokenshotgun.runlines.ui.reader.playback.TtsPlaybackController
+import com.brokenshotgun.runlines.R
 import android.widget.Toast
 
 @Composable
@@ -29,6 +31,10 @@ fun HomeScreen(
     var newScriptName by remember { mutableStateOf("") }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val exportedFileMessage = uiState.exportedFilePath?.let {
+        stringResource(R.string.home_saved_fountain, it)
+    }
+    val errorFallbackMessage = uiState.errorMessageResourceId?.let { stringResource(it) }
 
     DisposableEffect(lifecycleOwner, viewModel) {
         val observer = LifecycleEventObserver { _, event ->
@@ -41,9 +47,13 @@ fun HomeScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    LaunchedEffect(uiState.exportedFilePath) {
-        uiState.exportedFilePath?.let { path ->
-            Toast.makeText(context, "Saved Fountain to $path", Toast.LENGTH_SHORT).show()
+    LaunchedEffect(exportedFileMessage) {
+        exportedFileMessage?.let { message ->
+            Toast.makeText(
+                context,
+                message,
+                Toast.LENGTH_SHORT
+            ).show()
             viewModel.clearMessages()
         }
     }
@@ -55,7 +65,7 @@ fun HomeScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Run Lines",
+            text = stringResource(R.string.app_name),
             fontSize = 32.sp,
             style = MaterialTheme.typography.headlineLarge,
             textAlign = TextAlign.Center,
@@ -71,7 +81,7 @@ fun HomeScreen(
                 .fillMaxWidth()
                 .padding(vertical = 8.dp)
         ) {
-            Text(text = "New Script")
+            Text(text = stringResource(R.string.home_new_script))
         }
 
         Button(
@@ -80,11 +90,11 @@ fun HomeScreen(
                 .fillMaxWidth()
                 .padding(vertical = 8.dp)
         ) {
-            Text(text = "Import Script")
+            Text(text = stringResource(R.string.home_import_script))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        uiState.errorMessage?.let { message ->
+        (uiState.errorMessage ?: errorFallbackMessage)?.let { message ->
             Text(
                 text = message,
                 color = MaterialTheme.colorScheme.error,
@@ -106,12 +116,12 @@ fun HomeScreen(
     if (showAddScriptDialog) {
         AlertDialog(
             onDismissRequest = { showAddScriptDialog = false },
-            title = { Text("Add Script") },
+            title = { Text(stringResource(R.string.home_add_script_title)) },
             text = {
                 OutlinedTextField(
                     value = newScriptName,
                     onValueChange = { newScriptName = it },
-                    label = { Text("Script name") },
+                    label = { Text(stringResource(R.string.home_script_name_label)) },
                     singleLine = true
                 )
             },
@@ -124,7 +134,7 @@ fun HomeScreen(
                     },
                     enabled = ScriptNameNormalizer.normalize(newScriptName).isNotBlank()
                 ) {
-                    Text("Add")
+                    Text(stringResource(R.string.common_add))
                 }
             },
             dismissButton = {
@@ -134,7 +144,7 @@ fun HomeScreen(
                         showAddScriptDialog = false
                     }
                 ) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )

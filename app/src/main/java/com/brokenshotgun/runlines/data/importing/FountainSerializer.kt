@@ -143,15 +143,24 @@ object FountainSerializer {
     }
 
     @JvmStatic
-    fun deserialize(script: String): Script {
+    fun deserialize(
+        script: String,
+        untitledScriptName: String = "Untitled script",
+        untitledSceneName: String = "Untitled scene"
+    ): Script {
         val titleTokens = parseTitlePageOfString(getScriptTitlePage(script))
         val bodyTokens = parseBodyOfString(getScriptBody(script))
 
-        return scriptFromTokens(titleTokens, bodyTokens)
+        return scriptFromTokens(titleTokens, bodyTokens, untitledScriptName, untitledSceneName)
     }
 
-    private fun scriptFromTokens(titleTokens: Map<String, List<String>>, bodyTokens: Array<FNElement>): Script {
-        val script = Script.create("Untitled script")
+    private fun scriptFromTokens(
+        titleTokens: Map<String, List<String>>,
+        bodyTokens: Array<FNElement>,
+        untitledScriptName: String,
+        untitledSceneName: String
+    ): Script {
+        val script = Script.create(untitledScriptName)
         titleTokens["title"]?.let { script.name = it.joinToString(" ").trim() }
         titleTokens["credit"]?.let { script.credit = it.joinToString(" ").trim() }
         titleTokens["authors"]?.let { script.author = it.joinToString(" ").trim() }
@@ -191,7 +200,7 @@ object FountainSerializer {
         }
 
         if (currentScene.name == null) {
-            currentScene.name = "Untitled scene"
+            currentScene.name = untitledSceneName
             script.scenes.add(currentScene)
         }
         return script

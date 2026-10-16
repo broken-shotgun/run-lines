@@ -37,6 +37,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -47,6 +49,7 @@ import com.brokenshotgun.runlines.domain.model.Actor
 import com.brokenshotgun.runlines.domain.model.Line
 import com.brokenshotgun.runlines.domain.model.Scene
 import com.brokenshotgun.runlines.domain.model.Script
+import com.brokenshotgun.runlines.R
 import com.brokenshotgun.runlines.ui.components.LineEditRow
 import com.brokenshotgun.runlines.ui.reader.playback.ReadSceneTTSListener
 import java.util.Locale
@@ -67,6 +70,28 @@ fun ReadSceneScreen(
         mutableStateOf(script)
     }
     val context = LocalContext.current
+    val untitledScriptLabel = stringResource(R.string.playback_untitled_script)
+    val untitledSceneLabel = stringResource(R.string.scene_untitled)
+    val couldNotLoadSceneLabel = stringResource(R.string.error_could_not_load_scene)
+    val sceneNotFoundLabel = stringResource(R.string.error_scene_not_found)
+    val sceneThisLabel = stringResource(R.string.scene_this)
+    val untitledSceneHeadingLabel = stringResource(R.string.scene_untitled_heading)
+    val defaultVoiceLabel = stringResource(R.string.common_default)
+    val randomEnglishVoiceLabel = stringResource(R.string.voice_random_english)
+    val randomAllVoiceLabel = stringResource(R.string.voice_random_all)
+    val otherLanguageLabel = stringResource(R.string.common_other)
+    val noEnglishVoicesLabel = stringResource(R.string.voice_no_english_available)
+    val noVoicesAvailableLabel = stringResource(R.string.voice_none_available)
+    val chooseVoiceReplacementLabel = stringResource(R.string.voice_choose_replacement)
+    val sceneHeadingPrefixes = listOf(
+        stringResource(R.string.scene_prefix_int),
+        stringResource(R.string.scene_prefix_ext),
+        stringResource(R.string.scene_prefix_est),
+        stringResource(R.string.scene_prefix_int_ext_dotted),
+        stringResource(R.string.scene_prefix_int_ext),
+        stringResource(R.string.scene_prefix_ie)
+    )
+    val sceneSearchWord = stringResource(R.string.scene_search_word)
     val playbackScope = rememberCoroutineScope()
     val safeSceneIndex = sceneIndex.coerceIn(0, scriptState.scenes.lastIndex.coerceAtLeast(0))
     var selectedSceneIndex by remember(script.id) {
@@ -87,7 +112,9 @@ fun ReadSceneScreen(
     var showDeleteSceneDialog by remember { mutableStateOf(false) }
     var showSceneSelector by remember { mutableStateOf(false) }
     var showAddSceneDialog by remember { mutableStateOf(false) }
-    var sceneHeadingPrefix by remember { mutableStateOf("INT.") }
+    var sceneHeadingPrefix by remember(sceneHeadingPrefixes.first()) {
+        mutableStateOf(sceneHeadingPrefixes.first())
+    }
     var sceneHeadingLocation by remember { mutableStateOf("") }
     var insertSceneBeforeCurrent by remember { mutableStateOf(false) }
     var sceneHeadingPrefixExpanded by remember { mutableStateOf(false) }
@@ -186,13 +213,13 @@ fun ReadSceneScreen(
             sceneLoadError = null
             try {
                 val loadedScene = onLoadScene(index)
-                    ?: error("Scene ${index + 1} could not be found")
+                    ?: error(sceneNotFoundLabel)
                 val scenes = scriptState.scenes.toMutableList()
                 scenes[index] = loadedScene
                 scriptState = scriptState.copy(scenes = scenes)
                 onLoaded?.invoke()
             } catch (error: Exception) {
-                sceneLoadError = error.message ?: "Could not load scene"
+                sceneLoadError = error.message ?: couldNotLoadSceneLabel
             } finally {
                 loadingSceneIndices = loadingSceneIndices - index
             }
@@ -239,8 +266,8 @@ fun ReadSceneScreen(
         currentLineIndex = -1
         TtsPlaybackController.setPlayingState(
             context = context,
-            title = scriptState.name.ifBlank { "Untitled script" },
-            sceneName = currentScene.name ?: "Untitled scene",
+            title = scriptState.name.ifBlank { untitledScriptLabel },
+            sceneName = currentScene.name ?: untitledSceneLabel,
             scriptId = scriptState.id,
             sceneIndex = selectedSceneIndex,
             playing = false,
@@ -262,11 +289,6 @@ fun ReadSceneScreen(
         if (scriptState.scenes.isNotEmpty()) {
             loadScene(selectedSceneIndex)
         }
-    }
-
-    fun sceneLabel(index: Int): String {
-        val scene = scriptState.scenes[index]
-        return "Scene ${index + 1}${scene.name?.let { " • $it" } ?: ""}"
     }
 
     fun wordCount(text: String): Int {
@@ -298,9 +320,8 @@ fun ReadSceneScreen(
         return totalWords to spokenWords.coerceAtLeast(0)
     }
 
-    fun estimatedRemainingTimeLabel(): String {
-        val scene = scriptState.scenes.getOrNull(selectedSceneIndex) ?: return ""
-        if (!isPlaying) return ""
+    fun estimatedRemainingTime(): Pair<Int, Int>? {
+        val scene = scriptState.scenes.getOrNull(selectedSceneIndex) ?: return null
         var remainingWords = 0
         val startIndex = currentLineIndex.coerceAtLeast(0)
         for (index in scene.lines.indices) {
@@ -312,7 +333,33 @@ fun ReadSceneScreen(
         val secondsLeft = (remainingWords / wordsPerSecond).toLong().coerceAtLeast(0)
         val minutes = secondsLeft / 60
         val secs = secondsLeft % 60
-        return if (minutes > 0) "${minutes}m ${secs}s left" else "${secs}s left"
+        return minutes.toInt() to secs.toInt()
+    }
+    val remainingTime = estimatedRemainingTime()
+    val remainingMinutes = remainingTime?.first ?: 0
+    val remainingSeconds = remainingTime?.second ?: 0
+    val remainingSecondsLabel = pluralStringResource(
+        R.plurals.playback_remaining_seconds,
+        remainingSeconds.coerceAtLeast(0),
+        remainingSeconds.coerceAtLeast(0)
+    )
+    val remainingTimeLabel = if (remainingTime != null) {
+        if (remainingMinutes > 0) {
+            val remainingMinutesLabel = pluralStringResource(
+                R.plurals.playback_remaining_minutes,
+                remainingMinutes,
+                remainingMinutes
+            )
+            stringResource(
+                R.string.playback_remaining_minutes_seconds,
+                remainingMinutesLabel,
+                remainingSecondsLabel
+            )
+        } else {
+            stringResource(R.string.playback_remaining_seconds_left, remainingSecondsLabel)
+        }
+    } else {
+        ""
     }
 
     fun pausePlayback() {
@@ -323,8 +370,8 @@ fun ReadSceneScreen(
         isPlaying = false
         TtsPlaybackController.setPlayingState(
             context = context,
-            title = scriptState.name.ifBlank { "Untitled script" },
-            sceneName = currentScene.name ?: "Untitled scene",
+            title = scriptState.name.ifBlank { untitledScriptLabel },
+            sceneName = currentScene.name ?: untitledSceneLabel,
             scriptId = scriptState.id,
             sceneIndex = selectedSceneIndex,
             playing = false,
@@ -533,7 +580,9 @@ fun ReadSceneScreen(
             val locale = allVoices.firstOrNull { it.name == voiceName }?.locale
             locale != null && locale.language == "en" && locale.country == "US"
         }
-        val resolvedDefault = scriptState.defaultVoice?.takeIf { it.isNotBlank() && it != "Default" }
+        val resolvedDefault = scriptState.defaultVoice?.takeIf {
+            it.isNotBlank() && it != DEFAULT_VOICE_NAME
+        }
             ?: firstEnUsVoice
             ?: playableVoices.firstOrNull()
         if (!resolvedDefault.isNullOrBlank()) {
@@ -548,7 +597,8 @@ fun ReadSceneScreen(
             ?: scriptState.actorVoices[actorName]
             ?: scriptState.getVoice(actorName)
         return when {
-            configuredVoice.isNullOrBlank() || configuredVoice.equals("Default", ignoreCase = true) -> getPreferredDefaultTtsVoice()
+            configuredVoice.isNullOrBlank() ||
+                configuredVoice.equals(DEFAULT_VOICE_NAME, ignoreCase = true) -> getPreferredDefaultTtsVoice()
             else -> configuredVoice
         }
     }
@@ -556,12 +606,12 @@ fun ReadSceneScreen(
     fun openCharacterVoiceDialog() {
         val playableVoices = getPlayableTtsVoices()
         val fallbackVoices = scriptState.allVoices
-            .filter { it.isNotBlank() && it != "Default" }
+            .filter { it.isNotBlank() && it != DEFAULT_VOICE_NAME }
             .filter { playableVoices.contains(it) || it == scriptState.defaultVoice }
         val allVoices = getAllTtsVoices()
         val availableVoices = (playableVoices + fallbackVoices + listOfNotNull(scriptState.defaultVoice))
             .distinct()
-            .filter { it.isNotBlank() && it != "Default" }
+            .filter { it.isNotBlank() && it != DEFAULT_VOICE_NAME }
             .sortedWith { first, second ->
                 val firstVoice = allVoices.firstOrNull { it.name == first }
                 val secondVoice = allVoices.firstOrNull { it.name == second }
@@ -583,7 +633,14 @@ fun ReadSceneScreen(
                     }
                 }
             }
-        voiceDialogOptions = createVoiceOptions(listOf("Default") + availableVoices, allVoices)
+        voiceDialogOptions = createVoiceOptions(
+            listOf(DEFAULT_VOICE_NAME) + availableVoices,
+            allVoices,
+            defaultVoiceLabel,
+            randomEnglishVoiceLabel,
+            randomAllVoiceLabel,
+            otherLanguageLabel
+        )
         val sceneCharacterNames = currentScene.lines
             .map { it.actor.name.uppercase() }
             .toSet()
@@ -598,8 +655,8 @@ fun ReadSceneScreen(
                 VoiceAssignment(
                     name = actor.name.uppercase(),
                     selectedVoice = when {
-                        configuredVoice.isNullOrBlank() -> "Default"
-                        configuredVoice.equals("Default", ignoreCase = true) -> "Default"
+                        configuredVoice.isNullOrBlank() -> DEFAULT_VOICE_NAME
+                        configuredVoice.equals(DEFAULT_VOICE_NAME, ignoreCase = true) -> DEFAULT_VOICE_NAME
                         else -> configuredVoice
                     },
                     enabled = true,
@@ -639,9 +696,9 @@ fun ReadSceneScreen(
             }
             if (selectedVoice == null) {
                 voiceDialogError = if (assignment.selectedVoice == RANDOM_ENGLISH_VOICE) {
-                    "No English voices are available."
+                    noEnglishVoicesLabel
                 } else {
-                    "No voices are available."
+                    noVoicesAvailableLabel
                 }
                 return
             }
@@ -661,7 +718,7 @@ fun ReadSceneScreen(
                 updatedScript.actors.add(Actor(normalizedName))
             }
             val resolvedSelection = assignment.selectedVoice.trim()
-            if (resolvedSelection.isBlank() || resolvedSelection.equals("Default", ignoreCase = true)) {
+            if (resolvedSelection.isBlank() || resolvedSelection.equals(DEFAULT_VOICE_NAME, ignoreCase = true)) {
                 updatedScript.actorVoices.remove(normalizedName)
             } else {
                 updatedScript.actorVoices[normalizedName] = resolvedSelection
@@ -678,7 +735,7 @@ fun ReadSceneScreen(
             } else {
                 updatedScript.actors.firstOrNull { it.name.equals(replacementName, ignoreCase = true) }
                     ?: run {
-                        voiceDialogError = "Choose a character in the script to receive these lines."
+                        voiceDialogError = chooseVoiceReplacementLabel
                         return
                     }
             }
@@ -855,14 +912,14 @@ fun ReadSceneScreen(
             val startIndex = if (currentLineIndex == -1) 0 else currentLineIndex
             TtsPlaybackController.setPlayingState(
                 context = context,
-                title = scriptState.name.ifBlank { "Untitled script" },
-                sceneName = currentScene.name ?: "Untitled scene",
+                title = scriptState.name.ifBlank { untitledScriptLabel },
+                sceneName = currentScene.name ?: untitledSceneLabel,
                 scriptId = scriptState.id,
                 sceneIndex = selectedSceneIndex,
                 playing = true,
                 progressMaxWords = currentScene.lines.sumOf { wordCount(it.line) },
                 progressWords = currentScene.lines.take(currentLineIndex.coerceAtLeast(0) + 1).sumOf { wordCount(it.line) },
-                remainingTimeLabel = estimatedRemainingTimeLabel()
+                remainingTimeLabel = remainingTimeLabel
             )
             speakLineAt(selectedSceneIndex, startIndex)
         }
@@ -877,22 +934,22 @@ fun ReadSceneScreen(
         val (totalWords, spokenWords) = estimatedSceneProgress()
         TtsPlaybackController.setPlayingState(
             context = context,
-            title = scriptState.name.ifBlank { "Untitled script" },
-            sceneName = currentScene.name ?: "Untitled scene",
+            title = scriptState.name.ifBlank { untitledScriptLabel },
+            sceneName = currentScene.name ?: untitledSceneLabel,
             scriptId = scriptState.id,
             sceneIndex = selectedSceneIndex,
             playing = isPlaying,
             keepNotificationVisible = !isPlaying && currentLineIndex >= 0,
             progressMaxWords = totalWords,
             progressWords = spokenWords,
-            remainingTimeLabel = estimatedRemainingTimeLabel()
+            remainingTimeLabel = if (isPlaying) remainingTimeLabel else ""
         )
     }
 
     LaunchedEffect(selectedSceneIndex, scriptState.id, isPlaying) {
         TtsPlaybackController.bindPlayback(
-            title = scriptState.name.ifBlank { "Untitled script" },
-            sceneName = currentScene.name ?: "Untitled scene",
+            title = scriptState.name.ifBlank { untitledScriptLabel },
+            sceneName = currentScene.name ?: untitledSceneLabel,
             scriptId = scriptState.id,
             sceneIndex = selectedSceneIndex,
             playing = isPlaying,
@@ -949,11 +1006,11 @@ fun ReadSceneScreen(
             }
         }
         val filteredLegacyVoices = scriptState.allVoices
-            .filter { it.isNotBlank() && it != "Default" }
+            .filter { it.isNotBlank() && it != DEFAULT_VOICE_NAME }
             .filter { playableVoices.contains(it) || it == scriptState.defaultVoice }
         val availableVoiceNames = (playableVoices + filteredLegacyVoices + listOfNotNull(scriptState.defaultVoice))
             .distinct()
-            .filter { it.isNotBlank() && it != "Default" }
+            .filter { it.isNotBlank() && it != DEFAULT_VOICE_NAME }
             .sortedWith(compareBy<String> { voiceName ->
                 voiceLanguagePriority[voiceName] ?: 1
             }.thenBy { voiceName ->
@@ -962,7 +1019,14 @@ fun ReadSceneScreen(
             }.thenComparator { first, second ->
                 compareVoiceNamesNaturally(first, second)
             })
-        voiceDialogOptions = createVoiceOptions(listOf("Default") + availableVoiceNames, allVoices)
+        voiceDialogOptions = createVoiceOptions(
+            listOf(DEFAULT_VOICE_NAME) + availableVoiceNames,
+            allVoices,
+            defaultVoiceLabel,
+            randomEnglishVoiceLabel,
+            randomAllVoiceLabel,
+            otherLanguageLabel
+        )
         engine.setOnUtteranceProgressListener(ReadSceneTTSListener { utteranceId ->
             val utteranceMatch = UTTERANCE_ID_PATTERN.matchEntire(utteranceId.orEmpty())
                 ?: return@ReadSceneTTSListener
@@ -988,10 +1052,19 @@ fun ReadSceneScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(text = scriptState.name.ifBlank { "Untitled script" }) },
+                title = {
+                    Text(
+                        text = scriptState.name.ifBlank {
+                            untitledScriptLabel
+                        }
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { requestBack() }) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back)
+                        )
                     }
                 },
                 actions = {
@@ -1004,7 +1077,7 @@ fun ReadSceneScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Undo,
-                            contentDescription = "Undo edit",
+                            contentDescription = stringResource(R.string.scene_undo_edit),
                             tint = if (canUndo) LocalContentColor.current else LocalContentColor.current.copy(alpha = 0.38f)
                         )
                     }
@@ -1014,19 +1087,22 @@ fun ReadSceneScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Redo,
-                            contentDescription = "Redo edit",
+                            contentDescription = stringResource(R.string.scene_redo_edit),
                             tint = if (canRedo) LocalContentColor.current else LocalContentColor.current.copy(alpha = 0.38f)
                         )
                     }
                     IconButton(onClick = { menuExpanded = true }) {
-                        Icon(imageVector = Icons.Default.MoreVert, contentDescription = "Scene options")
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = stringResource(R.string.scene_options)
+                        )
                     }
                     DropdownMenu(
                         expanded = menuExpanded,
                         onDismissRequest = { menuExpanded = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Stop at scene end") },
+                            text = { Text(stringResource(R.string.scene_stop_at_end)) },
                             trailingIcon = {
                                 Checkbox(
                                     checked = stopAtSceneEnd,
@@ -1039,14 +1115,14 @@ fun ReadSceneScreen(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Character lines") },
+                            text = { Text(stringResource(R.string.scene_character_lines)) },
                             onClick = {
                                 menuExpanded = false
                                 showCharacterLinesDialog = true
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Character voices") },
+                            text = { Text(stringResource(R.string.scene_character_voices)) },
                             onClick = {
                                 menuExpanded = false
                                 openCharacterVoiceDialog()
@@ -1054,7 +1130,12 @@ fun ReadSceneScreen(
                         )
                         if (scriptState.scenes.isNotEmpty()) {
                             DropdownMenuItem(
-                                text = { Text("Delete scene", color = MaterialTheme.colorScheme.error) },
+                                text = {
+                                    Text(
+                                        stringResource(R.string.scene_delete_title),
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                },
                                 leadingIcon = {
                                     Icon(
                                         imageVector = Icons.Default.Delete,
@@ -1085,7 +1166,7 @@ fun ReadSceneScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Add,
-                            contentDescription = "Add line"
+                            contentDescription = stringResource(R.string.scene_add_line)
                         )
                     }
 
@@ -1096,7 +1177,7 @@ fun ReadSceneScreen(
                     ) {
                         Icon(
                             imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = "Play/Pause"
+                            contentDescription = stringResource(R.string.scene_play_pause)
                         )
                     }
                 }
@@ -1120,19 +1201,19 @@ fun ReadSceneScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
-                            text = "No scenes yet",
+                            text = stringResource(R.string.scene_empty_title),
                             style = MaterialTheme.typography.headlineSmall,
                             textAlign = TextAlign.Center
                         )
                         Text(
-                            text = "Add a scene to get started.",
+                            text = stringResource(R.string.scene_empty_message),
                             style = MaterialTheme.typography.bodyMedium,
                             textAlign = TextAlign.Center
                         )
                         Button(onClick = { showAddSceneDialog = true }) {
                             Icon(Icons.Default.Add, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Add scene")
+                            Text(stringResource(R.string.scene_add))
                         }
                     }
                 }
@@ -1148,14 +1229,23 @@ fun ReadSceneScreen(
                             .padding(bottom = 12.dp)
                     ) {
                         Text(
-                            text = sceneLabel(selectedSceneIndex),
+                            text = scriptState.scenes[selectedSceneIndex].name?.let { sceneName ->
+                                stringResource(
+                                    R.string.scene_number_title_label,
+                                    selectedSceneIndex + 1,
+                                    sceneName
+                                )
+                            } ?: stringResource(
+                                R.string.scene_number_label,
+                                selectedSceneIndex + 1
+                            ),
                             modifier = Modifier.weight(1f),
                             textAlign = TextAlign.Start,
                             maxLines = 1
                         )
                         Icon(
                             imageVector = Icons.Default.ArrowDropDown,
-                            contentDescription = "Choose scene"
+                            contentDescription = stringResource(R.string.scene_choose)
                         )
                     }
                 }
@@ -1163,7 +1253,10 @@ fun ReadSceneScreen(
                 item {
                     Text(
                         text = buildString {
-                            append(currentScene.name?.uppercase() ?: "UNTITLED SCENE")
+                            append(
+                                currentScene.name?.uppercase()
+                                    ?: untitledSceneHeadingLabel
+                            )
                             currentScene.fountainSceneNumber?.let { append(" #$it") }
                         },
                         style = MaterialTheme.typography.titleMedium,
@@ -1185,9 +1278,9 @@ fun ReadSceneScreen(
                             if (selectedSceneIndex in loadingSceneIndices) {
                                 CircularProgressIndicator()
                             } else {
-                                Text(sceneLoadError ?: "Scene not loaded")
+                                Text(sceneLoadError ?: stringResource(R.string.scene_not_loaded))
                                 TextButton(onClick = { loadScene(selectedSceneIndex) }) {
-                                    Text("Retry")
+                                    Text(stringResource(R.string.common_retry))
                                 }
                             }
                         }
@@ -1246,7 +1339,7 @@ fun ReadSceneScreen(
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Add scene")
+                        Text(stringResource(R.string.scene_add))
                     }
                 }
             }
@@ -1256,21 +1349,26 @@ fun ReadSceneScreen(
     if (showDeleteSceneDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteSceneDialog = false },
-            title = { Text("Delete scene?") },
+            title = { Text(stringResource(R.string.scene_delete_title)) },
             text = {
                 Text(
-                    "Delete ${currentScene.name ?: "this scene"} and all of its lines? " +
-                        "This cannot be undone."
+                    stringResource(
+                        R.string.scene_delete_confirmation,
+                        currentScene.name ?: sceneThisLabel
+                    )
                 )
             },
             confirmButton = {
                 TextButton(onClick = { deleteCurrentScene() }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                    Text(
+                        stringResource(R.string.common_delete),
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteSceneDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -1284,12 +1382,12 @@ fun ReadSceneScreen(
                 insertSceneBeforeCurrent = false
                 sceneHeadingPrefixExpanded = false
             },
-            title = { Text("Add scene") },
+            title = { Text(stringResource(R.string.scene_add)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (scriptState.scenes.isNotEmpty()) {
                         Text(
-                            text = "Insert",
+                            text = stringResource(R.string.scene_insert),
                             style = MaterialTheme.typography.labelLarge
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1298,7 +1396,7 @@ fun ReadSceneScreen(
                                 onClick = { insertSceneBeforeCurrent = false }
                             )
                             Text(
-                                text = "After current scene",
+                                text = stringResource(R.string.scene_insert_after),
                                 modifier = Modifier
                                     .weight(1f)
                                     .clickable { insertSceneBeforeCurrent = false }
@@ -1310,7 +1408,7 @@ fun ReadSceneScreen(
                                 onClick = { insertSceneBeforeCurrent = true }
                             )
                             Text(
-                                text = "Before current scene",
+                                text = stringResource(R.string.scene_insert_before),
                                 modifier = Modifier
                                     .weight(1f)
                                     .clickable { insertSceneBeforeCurrent = true }
@@ -1328,7 +1426,7 @@ fun ReadSceneScreen(
                             onValueChange = {},
                             readOnly = true,
                             singleLine = true,
-                            label = { Text("Heading prefix") },
+                            label = { Text(stringResource(R.string.scene_heading_prefix)) },
                             trailingIcon = {
                                 ExposedDropdownMenuDefaults.TrailingIcon(
                                     expanded = sceneHeadingPrefixExpanded
@@ -1342,7 +1440,14 @@ fun ReadSceneScreen(
                             expanded = sceneHeadingPrefixExpanded,
                             onDismissRequest = { sceneHeadingPrefixExpanded = false }
                         ) {
-                            listOf("INT.", "EXT.", "EST.", "INT./EXT.", "INT/EXT.", "I/E.").forEach { prefix ->
+                            listOf(
+                                R.string.scene_prefix_int,
+                                R.string.scene_prefix_ext,
+                                R.string.scene_prefix_est,
+                                R.string.scene_prefix_int_ext_dotted,
+                                R.string.scene_prefix_int_ext,
+                                R.string.scene_prefix_ie
+                            ).map(context::getString).forEach { prefix ->
                                 DropdownMenuItem(
                                     text = { Text(prefix) },
                                     onClick = {
@@ -1358,8 +1463,8 @@ fun ReadSceneScreen(
                         onValueChange = { sceneHeadingLocation = it },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        label = { Text("Scene name") },
-                        placeholder = { Text("Location - Time") }
+                        label = { Text(stringResource(R.string.scene_name)) },
+                        placeholder = { Text(stringResource(R.string.scene_location_time_placeholder)) }
                     )
                 }
             },
@@ -1368,7 +1473,7 @@ fun ReadSceneScreen(
                     onClick = { addNewScene() },
                     enabled = sceneHeadingLocation.isNotBlank()
                 ) {
-                    Text("Add")
+                    Text(stringResource(R.string.common_add))
                 }
             },
             dismissButton = {
@@ -1380,7 +1485,7 @@ fun ReadSceneScreen(
                         sceneHeadingPrefixExpanded = false
                     }
                 ) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -1390,7 +1495,7 @@ fun ReadSceneScreen(
         val normalizedQuery = sceneSearchQuery.trim()
         val matchingScenes = scriptState.scenes.indices.filter { index ->
             val scene = scriptState.scenes[index]
-            val searchableText = "Scene ${index + 1} ${scene.number} ${scene.name.orEmpty()}"
+            val searchableText = "$sceneSearchWord ${index + 1} ${scene.number} ${scene.name.orEmpty()}"
             searchableText.contains(normalizedQuery, ignoreCase = true)
         }
         val sceneListState = rememberLazyListState()
@@ -1404,7 +1509,7 @@ fun ReadSceneScreen(
 
         AlertDialog(
             onDismissRequest = { showSceneSelector = false },
-            title = { Text("Select scene") },
+            title = { Text(stringResource(R.string.scene_select_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(
@@ -1412,7 +1517,7 @@ fun ReadSceneScreen(
                         onValueChange = { sceneSearchQuery = it },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        label = { Text("Search scenes") },
+                        label = { Text(stringResource(R.string.scene_search)) },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Search,
@@ -1422,7 +1527,7 @@ fun ReadSceneScreen(
                     )
                     if (matchingScenes.isEmpty()) {
                         Text(
-                            text = "No scenes found",
+                            text = stringResource(R.string.scene_search_empty),
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(vertical = 16.dp)
                         )
@@ -1442,7 +1547,13 @@ fun ReadSceneScreen(
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Text(
-                                        text = sceneLabel(index),
+                                        text = scriptState.scenes[index].name?.let { sceneName ->
+                                            stringResource(
+                                                R.string.scene_number_title_label,
+                                                index + 1,
+                                                sceneName
+                                            )
+                                        } ?: stringResource(R.string.scene_number_label, index + 1),
                                         modifier = Modifier.weight(1f),
                                         textAlign = TextAlign.Start,
                                         color = if (selected) {
@@ -1454,7 +1565,7 @@ fun ReadSceneScreen(
                                     )
                                     if (selected) {
                                         Text(
-                                            text = "Selected",
+                                            text = stringResource(R.string.common_selected),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.primary
                                         )
@@ -1467,7 +1578,7 @@ fun ReadSceneScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showSceneSelector = false }) {
-                    Text("Close")
+                    Text(stringResource(R.string.common_close))
                 }
             }
         )
@@ -1476,8 +1587,8 @@ fun ReadSceneScreen(
     if (showExitDialog) {
         AlertDialog(
             onDismissRequest = { showExitDialog = false },
-            title = { Text("Unsaved changes") },
-            text = { Text("You have edits that haven't been saved. Save them before leaving or discard them.") },
+            title = { Text(stringResource(R.string.scene_unsaved_title)) },
+            text = { Text(stringResource(R.string.scene_unsaved_message)) },
             confirmButton = {
                 TextButton(onClick = {
                     if (editingLineIndex != null) {
@@ -1486,7 +1597,7 @@ fun ReadSceneScreen(
                     showExitDialog = false
                     onBack()
                 }) {
-                    Text("Save & leave")
+                    Text(stringResource(R.string.scene_save_and_leave))
                 }
             },
             dismissButton = {
@@ -1496,10 +1607,10 @@ fun ReadSceneScreen(
                         exitEditMode()
                         onBack()
                     }) {
-                        Text("Discard")
+                        Text(stringResource(R.string.scene_discard))
                     }
                     TextButton(onClick = { showExitDialog = false }) {
-                        Text("Keep editing")
+                        Text(stringResource(R.string.scene_keep_editing))
                     }
                 }
             }
@@ -1524,16 +1635,31 @@ fun ReadSceneScreen(
                         .padding(16.dp)
                 ) {
                     Text(
-                        text = "Character voices",
+                        text = stringResource(R.string.scene_character_voices),
                         style = MaterialTheme.typography.headlineSmall,
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
 
                     val voiceOptions = voiceDialogOptions.ifEmpty {
                         listOf(
-                            VoiceOption("Default", "Default", "Default", VoiceOptionKind.DEFAULT),
-                            VoiceOption(RANDOM_ENGLISH_VOICE, "Random English", "Default", VoiceOptionKind.RANDOM_ENGLISH),
-                            VoiceOption(RANDOM_ALL_VOICE, "Random All", "Default", VoiceOptionKind.RANDOM_ALL)
+                            VoiceOption(
+                                DEFAULT_VOICE_NAME,
+                                defaultVoiceLabel,
+                                defaultVoiceLabel,
+                                VoiceOptionKind.DEFAULT
+                            ),
+                            VoiceOption(
+                                RANDOM_ENGLISH_VOICE,
+                                randomEnglishVoiceLabel,
+                                defaultVoiceLabel,
+                                VoiceOptionKind.RANDOM_ENGLISH
+                            ),
+                            VoiceOption(
+                                RANDOM_ALL_VOICE,
+                                randomAllVoiceLabel,
+                                defaultVoiceLabel,
+                                VoiceOptionKind.RANDOM_ALL
+                            )
                         )
                     }
                     val sceneCharacters = voiceDialogCharacters.filter { it.isInCurrentScene }
@@ -1548,7 +1674,7 @@ fun ReadSceneScreen(
                         if (sceneCharacters.isNotEmpty()) {
                             item {
                                 Text(
-                                    text = "Characters in this scene",
+                                    text = stringResource(R.string.voice_scene_characters),
                                     style = MaterialTheme.typography.titleSmall,
                                     color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
@@ -1579,7 +1705,7 @@ fun ReadSceneScreen(
                         if (scriptCharacters.isNotEmpty()) {
                             item {
                                 Text(
-                                    text = "Characters in the script",
+                                    text = stringResource(R.string.voice_script_characters),
                                     style = MaterialTheme.typography.titleSmall,
                                     color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
@@ -1612,14 +1738,14 @@ fun ReadSceneScreen(
                                 onClick = {
                                     voiceDialogCharacters = voiceDialogCharacters + VoiceAssignment(
                                         name = "",
-                                        selectedVoice = "Default",
+                                        selectedVoice = DEFAULT_VOICE_NAME,
                                         enabled = true,
                                         isInCurrentScene = false
                                     )
                                 },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("Add character")
+                                Text(stringResource(R.string.voice_add_character))
                             }
                         }
                     }
@@ -1637,11 +1763,11 @@ fun ReadSceneScreen(
                         horizontalArrangement = Arrangement.End
                     ) {
                         TextButton(onClick = { cancelCharacterVoiceDialog() }) {
-                            Text("Cancel")
+                            Text(stringResource(R.string.common_cancel))
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         TextButton(onClick = { saveCharacterVoiceDialog() }) {
-                            Text("Save")
+                            Text(stringResource(R.string.common_save))
                         }
                     }
                 }
@@ -1661,13 +1787,10 @@ fun ReadSceneScreen(
 
         AlertDialog(
             onDismissRequest = { pendingVoiceRemoval = null },
-            title = { Text("Remove character?") },
+            title = { Text(stringResource(R.string.voice_remove_character_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        "Transfer all lines for ${assignment.name} to the selected character? " +
-                            "The transfer will be applied when you save Character voices."
-                    )
+                    Text(stringResource(R.string.voice_transfer_lines, assignment.name))
                     ExposedDropdownMenuBox(
                         expanded = replacementMenuExpanded,
                         onExpandedChange = {
@@ -1679,7 +1802,7 @@ fun ReadSceneScreen(
                             onValueChange = {},
                             readOnly = true,
                             singleLine = true,
-                            label = { Text("Transfer lines to") },
+                            label = { Text(stringResource(R.string.voice_transfer_lines_to)) },
                             trailingIcon = {
                                 ExposedDropdownMenuDefaults.TrailingIcon(
                                     expanded = replacementMenuExpanded
@@ -1717,12 +1840,12 @@ fun ReadSceneScreen(
                         pendingVoiceRemoval = null
                     }
                 ) {
-                    Text("Remove")
+                    Text(stringResource(R.string.voice_remove_character))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { pendingVoiceRemoval = null }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -1739,11 +1862,11 @@ fun ReadSceneScreen(
 
         AlertDialog(
             onDismissRequest = { showCharacterLinesDialog = false },
-            title = { Text("Character lines") },
+            title = { Text(stringResource(R.string.scene_character_lines)) },
             text = {
                 Column {
                     Text(
-                        text = "Turn lines on or off for the whole script.",
+                        text = stringResource(R.string.character_lines_description),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
@@ -1755,7 +1878,7 @@ fun ReadSceneScreen(
                             onClick = { saveMutedCharacters(emptySet()) },
                             enabled = currentlyMuted.isNotEmpty()
                         ) {
-                            Text("All on")
+                            Text(stringResource(R.string.character_lines_all_on))
                         }
                         TextButton(
                             onClick = {
@@ -1763,7 +1886,7 @@ fun ReadSceneScreen(
                             },
                             enabled = characters.any { it.name.uppercase() !in currentlyMuted }
                         ) {
-                            Text("All off")
+                            Text(stringResource(R.string.character_lines_all_off))
                         }
                     }
                     LazyColumn(
@@ -1800,13 +1923,14 @@ fun ReadSceneScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showCharacterLinesDialog = false }) {
-                    Text("Close")
+                    Text(stringResource(R.string.common_close))
                 }
             }
         )
     }
 }
 
+private const val DEFAULT_VOICE_NAME = "Default"
 private const val RANDOM_ENGLISH_VOICE = "__random_english__"
 private const val RANDOM_ALL_VOICE = "__random_all__"
 
@@ -1833,14 +1957,18 @@ private data class TtsVoiceDisplayDetails(
 
 private fun createVoiceOptions(
     voiceNames: List<String>,
-    voices: List<android.speech.tts.Voice>
+    voices: List<android.speech.tts.Voice>,
+    defaultLabel: String,
+    randomEnglishLabel: String,
+    randomAllLabel: String,
+    otherLanguageLabel: String
 ): List<VoiceOption> {
     val voicesByName = voices.associateBy { it.name }
     val voiceDetails = voiceNames
         .distinct()
         .filter {
             it.isNotBlank() &&
-                it != "Default" &&
+                it != DEFAULT_VOICE_NAME &&
                 it != RANDOM_ENGLISH_VOICE &&
                 it != RANDOM_ALL_VOICE
         }
@@ -1849,8 +1977,7 @@ private fun createVoiceOptions(
             val locale = voice?.locale
             val language = voice?.locale?.getDisplayLanguage(Locale.getDefault())
                 ?.takeIf { it.isNotBlank() }
-                ?: "Other"
-            val isEnglish = voice?.locale?.language == Locale.ENGLISH.language
+                ?: otherLanguageLabel
             TtsVoiceDisplayDetails(
                 name = name,
                 countryCode = locale?.country
@@ -1861,14 +1988,14 @@ private fun createVoiceOptions(
                         ?.uppercase(Locale.ROOT)
                     ?: "ZZ",
                 languageCode = locale?.language.orEmpty(),
-                language = if (isEnglish) "English" else language
+                language = language
             )
         }
-    val specialOptions = if (voiceNames.contains("Default")) {
+    val specialOptions = if (voiceNames.contains(DEFAULT_VOICE_NAME)) {
         listOf(
-            VoiceOption("Default", "Default", "Default", VoiceOptionKind.DEFAULT),
-            VoiceOption(RANDOM_ENGLISH_VOICE, "Random English", "Default", VoiceOptionKind.RANDOM_ENGLISH),
-            VoiceOption(RANDOM_ALL_VOICE, "Random All", "Default", VoiceOptionKind.RANDOM_ALL)
+            VoiceOption(DEFAULT_VOICE_NAME, defaultLabel, defaultLabel, VoiceOptionKind.DEFAULT),
+            VoiceOption(RANDOM_ENGLISH_VOICE, randomEnglishLabel, defaultLabel, VoiceOptionKind.RANDOM_ENGLISH),
+            VoiceOption(RANDOM_ALL_VOICE, randomAllLabel, defaultLabel, VoiceOptionKind.RANDOM_ALL)
         )
     } else {
         emptyList()
@@ -1896,8 +2023,8 @@ private fun createVoiceOptions(
             }
         }.sortedWith(compareBy<VoiceOption> {
             when {
-                it.language == "Default" -> 0
-                it.language == "English" -> 1
+                it.kind == VoiceOptionKind.DEFAULT -> 0
+                it.language == Locale.ENGLISH.getDisplayLanguage(Locale.getDefault()) -> 1
                 else -> 2
             }
         }.thenBy { it.language.lowercase(Locale.getDefault()) }
@@ -1981,7 +2108,7 @@ private fun CharacterVoiceEditorRow(
         OutlinedTextField(
             value = assignment.name,
             onValueChange = { onNameChange(it.uppercase()) },
-            label = { Text("Character") },
+            label = { Text(stringResource(R.string.common_character)) },
             singleLine = true,
             modifier = Modifier.weight(1f)
         )
@@ -1994,7 +2121,7 @@ private fun CharacterVoiceEditorRow(
             OutlinedTextField(
                 value = selectedVoiceOption?.label ?: assignment.selectedVoice,
                 onValueChange = { onVoiceChange(it) },
-                label = { Text("Voice") },
+                label = { Text(stringResource(R.string.common_voice)) },
                 singleLine = true,
                 readOnly = true,
                 modifier = Modifier
@@ -2008,9 +2135,9 @@ private fun CharacterVoiceEditorRow(
             ) {
                 if (voiceOptions.isEmpty()) {
                     DropdownMenuItem(
-                        text = { Text("Default") },
+                        text = { Text(stringResource(R.string.common_default)) },
                         onClick = {
-                            onVoiceChange("Default")
+                            onVoiceChange(DEFAULT_VOICE_NAME)
                             expanded = false
                         }
                     )
@@ -2031,7 +2158,12 @@ private fun CharacterVoiceEditorRow(
                                     DropdownMenuItem(
                                         text = { Text(option.label) },
                                         trailingIcon = if (isSelected) {
-                                            { Icon(Icons.Default.Check, contentDescription = "Selected") }
+                                            {
+                                                Icon(
+                                                    Icons.Default.Check,
+                                                    contentDescription = stringResource(R.string.common_selected)
+                                                )
+                                            }
                                         } else {
                                             null
                                         },
@@ -2060,7 +2192,7 @@ private fun CharacterVoiceEditorRow(
         ) {
             Icon(
                 imageVector = Icons.Default.Delete,
-                contentDescription = "Remove character",
+                contentDescription = stringResource(R.string.voice_remove_character),
                 tint = MaterialTheme.colorScheme.error,
                 modifier = Modifier.size(18.dp)
             )
