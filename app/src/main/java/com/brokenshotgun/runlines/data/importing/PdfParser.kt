@@ -6,13 +6,21 @@ object PdfParser {
     private const val NO_BREAK_SPACE = "\u00A0"
     private const val SPACE = " "
 
-    fun parse(script: String): Script {
+    fun parse(
+        script: String,
+        untitledScriptName: String = "Untitled script",
+        untitledSceneName: String = "Untitled scene"
+    ): Script {
         val trimmed = StringBuilder()
         val lines = script.replace(NO_BREAK_SPACE, SPACE).split("\n")
         for (line in lines) {
             trimmed.append(line.trim())
             trimmed.append("\n")
         }
-        return FountainSerializer.deserialize(trimmed.toString())
+        return FountainSerializer.deserialize(
+            trimmed.toString(),
+            untitledScriptName,
+            untitledSceneName
+        )
     }
 }

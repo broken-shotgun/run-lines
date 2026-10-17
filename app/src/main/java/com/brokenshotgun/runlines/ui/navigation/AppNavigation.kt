@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -29,6 +30,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.brokenshotgun.runlines.AppContainer
+import com.brokenshotgun.runlines.R
 import com.brokenshotgun.runlines.ui.home.HomeScreen
 import com.brokenshotgun.runlines.ui.home.HomeViewModel
 import com.brokenshotgun.runlines.ui.reader.ReadSceneScreen
@@ -49,7 +51,9 @@ fun AppNavigation(
     onImportScript: (onImportCompleted: () -> Unit) -> Unit,
     appContainer: AppContainer,
     initialScriptId: Long = -1L,
-    initialSceneIndex: Int = 0
+    initialSceneIndex: Int = 0,
+    importedScriptId: Long? = null,
+    onImportedScriptOpened: () -> Unit = {}
 ) {
     val initialRoute: AppRoute = if (initialScriptId >= 0L) {
         AppRoute.ReadScene(initialScriptId, initialSceneIndex.coerceAtLeast(0))
@@ -59,11 +63,16 @@ fun AppNavigation(
     val backStack: NavBackStack<NavKey> = rememberNavBackStack(initialRoute)
     var openingScriptId by remember { mutableStateOf<Long?>(null) }
 
+    LaunchedEffect(importedScriptId) {
+        importedScriptId?.let { openingScriptId = it }
+    }
+
     LaunchedEffect(openingScriptId) {
         val scriptId = openingScriptId ?: return@LaunchedEffect
         withFrameNanos { }
-        if (backStack.lastOrNull() == AppRoute.Home) {
-            backStack.add(AppRoute.ReadScene(scriptId, 0))
+        val destination = AppRoute.ReadScene(scriptId, 0)
+        if (backStack.lastOrNull() != destination) {
+            backStack.add(destination)
         }
     }
 
@@ -94,6 +103,8 @@ fun AppNavigation(
                         factory = ReaderViewModel.factory(appContainer.repository)
                     )
                     val readerState by readerViewModel.uiState.collectAsStateWithLifecycle()
+                    val readerErrorMessage = readerState.errorMessage
+                        ?: readerState.errorMessageResourceId?.let { stringResource(it) }
                     LaunchedEffect(key.scriptId) {
                         readerViewModel.loadScript(key.scriptId)
                     }
@@ -102,8 +113,14 @@ fun AppNavigation(
                             if (readerState.script != null) {
                                 withFrameNanos { }
                                 openingScriptId = null
+                                if (importedScriptId == key.scriptId) {
+                                    onImportedScriptOpened()
+                                }
                             } else if (!readerState.isLoading) {
                                 openingScriptId = null
+                                if (importedScriptId == key.scriptId) {
+                                    onImportedScriptOpened()
+                                }
                             }
                         }
                     }
@@ -137,7 +154,10 @@ fun AppNavigation(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            Text(readerState.errorMessage ?: "Could not open script")
+                            Text(
+                                readerErrorMessage
+                                    ?: stringResource(R.string.navigation_could_not_open_script)
+                            )
                             TextButton(
                                 onClick = {
                                     if (backStack.size > 1) {
@@ -145,7 +165,7 @@ fun AppNavigation(
                                     }
                                 }
                             ) {
-                                Text("Back")
+                                Text(stringResource(R.string.common_back))
                             }
                         }
                     }
@@ -166,7 +186,7 @@ fun AppNavigation(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         CircularProgressIndicator()
-                        Text("Opening script...")
+                        Text(stringResource(R.string.navigation_opening_script))
                     }
                 }
             }

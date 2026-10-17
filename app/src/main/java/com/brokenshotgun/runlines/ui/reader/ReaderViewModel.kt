@@ -1,8 +1,10 @@
 package com.brokenshotgun.runlines.ui.reader
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.brokenshotgun.runlines.R
 import com.brokenshotgun.runlines.domain.model.Script
 import com.brokenshotgun.runlines.domain.model.Scene
 import com.brokenshotgun.runlines.domain.repository.ScriptRepository
@@ -19,7 +21,8 @@ import kotlinx.coroutines.launch
 data class ReaderUiState(
     val script: Script? = null,
     val isLoading: Boolean = true,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    @get:StringRes val errorMessageResourceId: Int? = null
 )
 
 class ReaderViewModel(private val repository: ScriptRepository) : ViewModel() {
@@ -32,21 +35,29 @@ class ReaderViewModel(private val repository: ScriptRepository) : ViewModel() {
 
     fun loadScript(scriptId: Long) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            _uiState.update {
+                it.copy(isLoading = true, errorMessage = null, errorMessageResourceId = null)
+            }
             try {
                 val script = getScript(scriptId)
                 _uiState.update {
                     it.copy(
                         script = script,
                         isLoading = false,
-                        errorMessage = if (script == null) "Script not found" else null
+                        errorMessage = null,
+                        errorMessageResourceId = if (script == null) R.string.error_script_not_found else null
                     )
                 }
             } catch (error: Exception) {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "Could not load script"
+                        errorMessage = error.message,
+                        errorMessageResourceId = if (error.message == null) {
+                            R.string.error_could_not_load_script
+                        } else {
+                            null
+                        }
                     )
                 }
             }
@@ -61,10 +72,15 @@ class ReaderViewModel(private val repository: ScriptRepository) : ViewModel() {
             scriptSaveMutex.withLock {
                 try {
                     updateScript(script)
-                    _uiState.update { it.copy(script = script, errorMessage = null) }
+                    _uiState.update {
+                        it.copy(script = script, errorMessage = null, errorMessageResourceId = null)
+                    }
                 } catch (error: Exception) {
                     _uiState.update {
-                        it.copy(errorMessage = error.message ?: "Could not save script")
+                        it.copy(
+                            errorMessage = error.message,
+                            errorMessageResourceId = if (error.message == null) R.string.error_could_not_save_script else null
+                        )
                     }
                 }
             }
@@ -76,10 +92,15 @@ class ReaderViewModel(private val repository: ScriptRepository) : ViewModel() {
             scriptSaveMutex.withLock {
                 try {
                     repository.deleteScene(script.id, sceneIndex)
-                    _uiState.update { it.copy(script = script, errorMessage = null) }
+                    _uiState.update {
+                        it.copy(script = script, errorMessage = null, errorMessageResourceId = null)
+                    }
                 } catch (error: Exception) {
                     _uiState.update {
-                        it.copy(errorMessage = error.message ?: "Could not delete scene")
+                        it.copy(
+                            errorMessage = error.message,
+                            errorMessageResourceId = if (error.message == null) R.string.error_could_not_delete_scene else null
+                        )
                     }
                 }
             }
@@ -93,10 +114,15 @@ class ReaderViewModel(private val repository: ScriptRepository) : ViewModel() {
                     val scene = script.scenes.getOrNull(sceneIndex)
                         ?: error("Scene $sceneIndex was not found for insertion")
                     repository.insertScene(script.id, sceneIndex, scene)
-                    _uiState.update { it.copy(script = script, errorMessage = null) }
+                    _uiState.update {
+                        it.copy(script = script, errorMessage = null, errorMessageResourceId = null)
+                    }
                 } catch (error: Exception) {
                     _uiState.update {
-                        it.copy(errorMessage = error.message ?: "Could not add scene")
+                        it.copy(
+                            errorMessage = error.message,
+                            errorMessageResourceId = if (error.message == null) R.string.error_could_not_add_scene else null
+                        )
                     }
                 }
             }

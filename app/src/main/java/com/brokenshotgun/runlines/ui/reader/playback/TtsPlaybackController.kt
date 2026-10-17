@@ -17,8 +17,8 @@ object TtsPlaybackController {
 
     private var toggleAction: (() -> Unit)? = null
     private var stopAction: (() -> Unit)? = null
-    private var scriptTitle: String = "Script"
-    private var sceneTitle: String = "Scene"
+    private var scriptTitle: String = ""
+    private var sceneTitle: String = ""
     private var currentScriptId: Long = -1L
     private var currentSceneIndex: Int = 0
     private var isPlaying: Boolean = false
@@ -93,8 +93,8 @@ object TtsPlaybackController {
     fun clearActivePlayback(context: Context) {
         toggleAction = null
         stopAction = null
-        scriptTitle = "Script"
-        sceneTitle = "Scene"
+        scriptTitle = ""
+        sceneTitle = ""
         currentScriptId = -1L
         currentSceneIndex = 0
         isPlaying = false
@@ -113,10 +113,10 @@ object TtsPlaybackController {
         val notificationManager = context.getSystemService(NotificationManager::class.java)
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Script Reader Playback",
+            context.getString(R.string.playback_notification_channel),
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "Playback controls for spoken scripts"
+            description = context.getString(R.string.playback_notification_description)
             setSound(null, null)
         }
         notificationManager?.createNotificationChannel(channel)
@@ -135,7 +135,9 @@ object TtsPlaybackController {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val toggleActionTitle = if (isPlaying) "Pause" else "Play"
+        val toggleActionTitle = context.getString(
+            if (isPlaying) R.string.playback_pause else R.string.playback_play
+        )
         val toggleIcon = if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
         val toggleIntent = PendingIntent.getBroadcast(
             context,
@@ -167,7 +169,9 @@ object TtsPlaybackController {
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentTitle(scriptTitle)
             .setContentText(notificationText)
-            .setSubText(if (isPlaying) "Playing" else "Paused")
+            .setSubText(
+                context.getString(if (isPlaying) R.string.playback_playing else R.string.playback_paused)
+            )
             .setProgress(maxProgress, currentProgress, false)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -182,7 +186,7 @@ object TtsPlaybackController {
             .addAction(
                 NotificationCompat.Action(
                     android.R.drawable.ic_media_ff,
-                    "Stop",
+                    context.getString(R.string.playback_stop),
                     stopIntent
                 )
             )

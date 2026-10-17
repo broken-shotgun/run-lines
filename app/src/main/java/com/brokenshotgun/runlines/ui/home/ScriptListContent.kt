@@ -15,7 +15,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.brokenshotgun.runlines.R
 import com.brokenshotgun.runlines.domain.model.Script
 import com.brokenshotgun.runlines.domain.model.ScriptNameNormalizer
 
@@ -38,7 +40,7 @@ fun ScriptListContent(
         modifier = modifier.fillMaxSize()
     ) {
         Text(
-            text = "Your Scripts",
+            text = stringResource(R.string.script_list_title),
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(bottom = 8.dp)
         )
@@ -59,7 +61,7 @@ fun ScriptListContent(
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "No scripts found")
+                Text(text = stringResource(R.string.script_list_empty))
             }
         } else {
             LazyColumn(modifier = Modifier.weight(1f)) {
@@ -75,14 +77,17 @@ fun ScriptListContent(
                             IconButton(
                                 onClick = { expandedScriptId = if (expandedScriptId == script.id) null else script.id }
                             ) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "Script options")
+                                Icon(
+                                    Icons.Default.MoreVert,
+                                    contentDescription = stringResource(R.string.script_options)
+                                )
                             }
                             DropdownMenu(
                                 expanded = expandedScriptId == script.id,
                                 onDismissRequest = { expandedScriptId = null }
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text("Rename script") },
+                                    text = { Text(stringResource(R.string.script_rename)) },
                                     onClick = {
                                         renameValue = script.name
                                         scriptToRename = script
@@ -90,7 +95,7 @@ fun ScriptListContent(
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Save Fountain") },
+                                    text = { Text(stringResource(R.string.script_save_fountain)) },
                                     onClick = {
                                         onExportScript(script)
                                         expandedScriptId = null
@@ -99,7 +104,7 @@ fun ScriptListContent(
                                 DropdownMenuItem(
                                     text = {
                                         Text(
-                                            "Delete script",
+                                            stringResource(R.string.script_delete),
                                             color = MaterialTheme.colorScheme.error
                                         )
                                     },
@@ -121,12 +126,12 @@ fun ScriptListContent(
                         scriptToRename?.let { script ->
                             AlertDialog(
                                 onDismissRequest = { scriptToRename = null },
-                                title = { Text("Rename script") },
+                                title = { Text(stringResource(R.string.script_rename)) },
                                 text = {
                                     OutlinedTextField(
                                         value = renameValue,
                                         onValueChange = { renameValue = it },
-                                        label = { Text("Script name") },
+                                        label = { Text(stringResource(R.string.home_script_name_label)) },
                                         singleLine = true
                                     )
                                 },
@@ -138,12 +143,12 @@ fun ScriptListContent(
                                         },
                                         enabled = ScriptNameNormalizer.normalize(renameValue).isNotBlank()
                                     ) {
-                                        Text("Rename")
+                                        Text(stringResource(R.string.common_rename))
                                     }
                                 },
                                 dismissButton = {
                                     TextButton(onClick = { scriptToRename = null }) {
-                                        Text("Cancel")
+                                        Text(stringResource(R.string.common_cancel))
                                     }
                                 }
                             )
@@ -156,12 +161,9 @@ fun ScriptListContent(
         scriptToDelete?.let { script ->
             AlertDialog(
                 onDismissRequest = { scriptToDelete = null },
-                title = { Text("Delete script?") },
+                title = { Text(stringResource(R.string.script_delete_title)) },
                 text = {
-                    Text(
-                        "Delete \"${script.name}\" and all of its scenes and lines? " +
-                            "This cannot be undone."
-                    )
+                    Text(stringResource(R.string.script_delete_confirmation, script.name))
                 },
                 confirmButton = {
                     TextButton(
@@ -170,12 +172,15 @@ fun ScriptListContent(
                             scriptToDelete = null
                         }
                     ) {
-                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                        Text(
+                            stringResource(R.string.common_delete),
+                            color = MaterialTheme.colorScheme.error
+                        )
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { scriptToDelete = null }) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.common_cancel))
                     }
                 }
             )

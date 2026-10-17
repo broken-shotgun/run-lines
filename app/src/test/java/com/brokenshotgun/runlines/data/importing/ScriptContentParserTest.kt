@@ -37,4 +37,43 @@ class ScriptContentParserTest {
         assertEquals("My Play", titledScript.name)
         assertEquals("fallback", untitledScript.name)
     }
+
+    @Test
+    fun usesLocalizedFallbackNamesWhenParsingUntitledScripts() {
+        val localizedParser = FountainScriptContentParser(
+            untitledScriptName = "Untitled screenplay",
+            untitledSceneName = "Untitled screenplay scene"
+        )
+
+        val script = localizedParser.parse(
+            "fallback.fountain",
+            "Title: Untitled screenplay\n\n"
+        )
+
+        assertEquals("fallback", script.name)
+        assertEquals("Untitled screenplay scene", script.scenes.single().name)
+    }
+
+    @Test
+    fun parsesFinalDraftFdxFiles() {
+        val fdx = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <FinalDraft>
+              <Content>
+                <Paragraph Type="Title"><Text>Example Script</Text></Paragraph>
+                <Paragraph Type="Scene Heading"><Text>INT. ROOM - DAY</Text></Paragraph>
+                <Paragraph Type="Action"><Text>A light turns on.</Text></Paragraph>
+                <Paragraph Type="Character"><Text>ALICE</Text></Paragraph>
+                <Paragraph Type="Dialogue"><Text>Hello there.</Text></Paragraph>
+              </Content>
+            </FinalDraft>
+        """.trimIndent()
+
+        val script = parser.parse("example.fdx", fdx)
+
+        assertEquals("Example Script", script.name)
+        assertEquals("INT. ROOM - DAY", script.scenes.single().name)
+        assertEquals("A light turns on.", script.scenes.single().lines[0].line)
+        assertEquals("Hello there.", script.scenes.single().lines[1].line)
+    }
 }

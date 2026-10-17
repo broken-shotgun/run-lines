@@ -19,7 +19,10 @@ class RunLinesApplication : Application() {
         container = AppContainer(
             repository = LocalScriptRepository(ScriptDatabase(this)),
             exporter = FountainFileExporter(
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),
+                exportDirectoryErrorMessage = { directory ->
+                    getString(R.string.error_could_not_create_export_directory, directory.absolutePath)
+                }
             )
         )
     }

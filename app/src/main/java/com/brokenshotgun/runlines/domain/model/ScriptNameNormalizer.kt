@@ -11,9 +11,9 @@ object ScriptNameNormalizer {
             .trim()
             .trimEnd(' ', '.')
 
-    fun fromFileName(fileName: String): String {
+    fun fromFileName(fileName: String, fallbackName: String = "Untitled script"): String {
         val baseName = fileName.substringAfterLast('/').substringAfterLast('\\')
         val nameWithoutExtension = baseName.substringBeforeLast('.', missingDelimiterValue = baseName)
-        return normalize(nameWithoutExtension).ifBlank { "Untitled script" }
+        return normalize(nameWithoutExtension).ifBlank { fallbackName }
     }
 }
