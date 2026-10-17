@@ -1,15 +1,21 @@
 package com.brokenshotgun.runlines.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
@@ -39,13 +45,25 @@ fun LineEditRow(
     onLineValueChange: (String) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    lineIndex: Int,
+    onPositionChanged: (Int, Float, Float) -> Unit,
+    onDragStart: (Int, Float) -> Unit,
+    onDrag: (Int, Float) -> Unit,
+    onDragEnd: () -> Unit,
+    onDragCancel: () -> Unit
 ) {
     val selectLineLabel = stringResource(R.string.line_select)
     val hiddenLineLabel = stringResource(R.string.line_hidden)
+    val dragHandleColor = MaterialTheme.colorScheme.onSurfaceVariant
     val isActionLine = line.actor == Actor.ACTION
     var isRevealed by remember(line.actor.name, isLineMuted) { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
+    var handleCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    val currentOnDragStart by rememberUpdatedState(onDragStart)
+    val currentOnDrag by rememberUpdatedState(onDrag)
+    val currentOnDragEnd by rememberUpdatedState(onDragEnd)
+    val currentOnDragCancel by rememberUpdatedState(onDragCancel)
     val matchingSuggestions = remember(editingActorName, characterSuggestions) {
         val query = editingActorName.trim()
         if (query.isBlank()) {
@@ -84,6 +102,10 @@ fun LineEditRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .onGloballyPositioned { coordinates ->
+                val top = coordinates.positionInRoot().y
+                onPositionChanged(lineIndex, top, top + coordinates.size.height)
+            }
             .then(
                 if (isSelected) Modifier.background(
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
@@ -95,72 +117,111 @@ fun LineEditRow(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (isEditing) {
-            Column(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                ExposedDropdownMenuBox(
-                    expanded = expanded && matchingSuggestions.isNotEmpty(),
-                    onExpandedChange = { expanded = !expanded }
-                ) {
-                    OutlinedTextField(
-                        value = editingActorName,
-                        onValueChange = {
-                            expanded = true
-                            onActorValueChange(it)
-                        },
-                        label = { Text(stringResource(R.string.common_character)) },
-                        singleLine = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                        }
-                    )
-                    ExposedDropdownMenu(
-                        expanded = expanded && matchingSuggestions.isNotEmpty(),
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        matchingSuggestions.forEach { suggestion ->
-                            DropdownMenuItem(
-                                text = { Text(suggestion) },
-                                onClick = {
-                                    onActorValueChange(suggestion)
-                                    expanded = false
+                Canvas(
+                    modifier = Modifier
+                        .width(32.dp)
+                        .height(40.dp)
+                        .onGloballyPositioned { handleCoordinates = it }
+                        .pointerInput(lineIndex) {
+                            detectDragGestures(
+                                onDragStart = { position ->
+                                    val pointerY = handleCoordinates?.localToRoot(position)?.y
+                                    if (pointerY != null) currentOnDragStart(lineIndex, pointerY)
+                                },
+                                onDragEnd = { currentOnDragEnd() },
+                                onDragCancel = { currentOnDragCancel() },
+                                onDrag = { change, amount ->
+                                    change.consume()
+                                    currentOnDrag(lineIndex, amount.y)
                                 }
+                            )
+                        }
+                ) {
+                    val radius = 2.dp.toPx()
+                    val gap = 7.dp.toPx()
+                    val startX = (size.width - gap) / 2f
+                    val startY = (size.height - 2f * gap) / 2f
+                    for (row in 0..2) {
+                        for (column in 0..1) {
+                            drawCircle(
+                                color = dragHandleColor,
+                                radius = radius,
+                                center = Offset(startX + column * gap, startY + row * gap)
                             )
                         }
                     }
                 }
-                OutlinedTextField(
-                    value = editingLineText,
-                    onValueChange = onLineValueChange,
-                    label = { Text(stringResource(R.string.line_label)) },
-                    minLines = 2,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    TextButton(onClick = onCancel) {
-                        Text(stringResource(R.string.common_cancel))
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = onDelete,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error,
-                            contentColor = MaterialTheme.colorScheme.onError
-                        )
+                    ExposedDropdownMenuBox(
+                        expanded = expanded && matchingSuggestions.isNotEmpty(),
+                        onExpandedChange = { expanded = !expanded }
                     ) {
-                        Text(stringResource(R.string.common_delete))
+                        OutlinedTextField(
+                            value = editingActorName,
+                            onValueChange = {
+                                expanded = true
+                                onActorValueChange(it)
+                            },
+                            label = { Text(stringResource(R.string.common_character)) },
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                            }
+                        )
+                        ExposedDropdownMenu(
+                            expanded = expanded && matchingSuggestions.isNotEmpty(),
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            matchingSuggestions.forEach { suggestion ->
+                                DropdownMenuItem(
+                                    text = { Text(suggestion) },
+                                    onClick = {
+                                        onActorValueChange(suggestion)
+                                        expanded = false
+                                    }
+                                )
+                            }
+                        }
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = onSave) {
-                        Text(stringResource(R.string.common_save))
+                    OutlinedTextField(
+                        value = editingLineText,
+                        onValueChange = onLineValueChange,
+                        label = { Text(stringResource(R.string.line_label)) },
+                        minLines = 2,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = onCancel) {
+                            Text(stringResource(R.string.common_cancel))
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = onDelete,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError
+                            )
+                        ) {
+                            Text(stringResource(R.string.common_delete))
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(onClick = onSave) {
+                            Text(stringResource(R.string.common_save))
+                        }
                     }
                 }
             }

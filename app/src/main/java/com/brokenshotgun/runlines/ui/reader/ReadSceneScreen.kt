@@ -135,6 +135,10 @@ fun ReadSceneScreen(
     var editingLineText by remember { mutableStateOf("") }
     var originalEditingActorName by remember { mutableStateOf("") }
     var originalEditingLineText by remember { mutableStateOf("") }
+    var draggingLineIndex by remember { mutableStateOf<Int?>(null) }
+    var lineDropIndex by remember { mutableStateOf<Int?>(null) }
+    var dragPointerY by remember { mutableFloatStateOf(0f) }
+    val linePositions = remember { mutableStateMapOf<Int, Pair<Float, Float>>() }
     val maxHistoryActions = 500
     var sceneUndoStack by remember(selectedSceneIndex) { mutableStateOf<List<List<Line>>>(emptyList()) }
     var sceneRedoStack by remember(selectedSceneIndex) { mutableStateOf<List<List<Line>>>(emptyList()) }
@@ -531,6 +535,52 @@ fun ReadSceneScreen(
         scriptState = updatedScript
         onSaveScript(scriptState)
         exitEditMode()
+    }
+
+    fun updateLineDropIndex(pointerY: Float) {
+        val visiblePositions = linePositions.toSortedMap()
+        lineDropIndex = visiblePositions.entries
+            .firstOrNull { pointerY < (it.value.first + it.value.second) / 2f }
+            ?.key
+            ?: visiblePositions.entries.lastOrNull()?.key?.plus(1)
+    }
+
+    fun finishLineReorder() {
+        val sourceIndex = draggingLineIndex
+        val insertionBoundary = lineDropIndex
+        if (sourceIndex != null && insertionBoundary != null) {
+            val destinationIndex = if (insertionBoundary > sourceIndex) {
+                insertionBoundary - 1
+            } else {
+                insertionBoundary
+            }
+            val scene = scriptState.scenes.getOrNull(selectedSceneIndex)
+            if (scene != null && sourceIndex in scene.lines.indices &&
+                destinationIndex in scene.lines.indices && destinationIndex != sourceIndex
+            ) {
+                val updatedScript = cloneScriptState()
+                val updatedScene = updatedScript.scenes[selectedSceneIndex]
+                val beforeSnapshot = snapshotSceneLines(updatedScene)
+                val movedLine = updatedScene.lines.removeAt(sourceIndex)
+                updatedScene.lines.add(destinationIndex, movedLine)
+                pushUndoState(beforeSnapshot)
+                sceneRedoStack = emptyList()
+                scriptState = updatedScript
+                if (editingLineIndex == sourceIndex) editingLineIndex = destinationIndex
+                currentLineIndex = when {
+                    currentLineIndex == sourceIndex -> destinationIndex
+                    sourceIndex < destinationIndex && currentLineIndex in (sourceIndex + 1)..destinationIndex ->
+                        currentLineIndex - 1
+                    destinationIndex < sourceIndex && currentLineIndex in destinationIndex until sourceIndex ->
+                        currentLineIndex + 1
+                    else -> currentLineIndex
+                }
+                onSaveScript(updatedScript)
+            }
+        }
+        draggingLineIndex = null
+        lineDropIndex = null
+        linePositions.clear()
     }
 
     fun addNewLineToBottom() {
@@ -1296,46 +1346,80 @@ fun ReadSceneScreen(
                     }
                 } else {
                     itemsIndexed(currentScene.lines) { index, line ->
-                        LineEditRow(
-                            line = line,
-                            isSelected = index == currentLineIndex,
-                            isEditing = editingLineIndex == index,
-                            isLineMuted = line.actor != Actor.ACTION &&
-                                scriptState.mutedCharacterNames.any { it.equals(line.actor.name, ignoreCase = true) },
-                            editingActorName = if (editingLineIndex == index) editingActorName else line.actor.name.uppercase(),
-                            editingLineText = if (editingLineIndex == index) editingLineText else line.line,
-                            characterSuggestions = scriptState.actors
-                                .map { it.name }
-                                .filter { it != Actor.ACTION_NAME }
-                                .distinct()
-                                .sorted(),
-                            onClick = {
-                                if (isPlaying) {
-                                    speakLineAt(selectedSceneIndex, index)
-                                } else {
-                                    currentLineIndex = index
-                                }
-                            },
-                            onLongClick = {
-                                beginEditingLine(index)
-                            },
-                            onActorValueChange = {
-                                editingActorName = it.uppercase()
-                            },
-                            onLineValueChange = {
-                                editingLineText = it
-                            },
-                            onSave = {
-                                saveEditingLineChanges(index, editingActorName, editingLineText)
-                                currentLineIndex = index
-                            },
-                            onCancel = {
-                                cancelEditingLine()
-                            },
-                            onDelete = {
-                                deleteLineAndSave(index)
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            if (lineDropIndex == index) {
+                                LineDropIndicator()
                             }
-                        )
+                            LineEditRow(
+                                line = line,
+                                isSelected = index == currentLineIndex,
+                                isEditing = editingLineIndex == index,
+                                isLineMuted = line.actor != Actor.ACTION &&
+                                    scriptState.mutedCharacterNames.any { it.equals(line.actor.name, ignoreCase = true) },
+                                editingActorName = if (editingLineIndex == index) editingActorName else line.actor.name.uppercase(),
+                                editingLineText = if (editingLineIndex == index) editingLineText else line.line,
+                                characterSuggestions = scriptState.actors
+                                    .map { it.name }
+                                    .filter { it != Actor.ACTION_NAME }
+                                    .distinct()
+                                    .sorted(),
+                                onClick = {
+                                    if (isPlaying) {
+                                        speakLineAt(selectedSceneIndex, index)
+                                    } else {
+                                        currentLineIndex = index
+                                    }
+                                },
+                                onLongClick = {
+                                    beginEditingLine(index)
+                                },
+                                onActorValueChange = {
+                                    editingActorName = it.uppercase()
+                                },
+                                onLineValueChange = {
+                                    editingLineText = it
+                                },
+                                onSave = {
+                                    saveEditingLineChanges(index, editingActorName, editingLineText)
+                                    currentLineIndex = index
+                                },
+                                onCancel = {
+                                    cancelEditingLine()
+                                },
+                                onDelete = {
+                                    deleteLineAndSave(index)
+                                },
+                                lineIndex = index,
+                                onPositionChanged = { positionIndex, top, bottom ->
+                                    val position = top to bottom
+                                    if (linePositions[positionIndex] != position) {
+                                        linePositions[positionIndex] = position
+                                    }
+                                },
+                                onDragStart = { draggedIndex, pointerY ->
+                                    draggingLineIndex = draggedIndex
+                                    dragPointerY = pointerY
+                                    updateLineDropIndex(pointerY)
+                                },
+                                onDrag = { draggedIndex, deltaY ->
+                                    if (draggingLineIndex == draggedIndex) {
+                                        dragPointerY += deltaY
+                                        updateLineDropIndex(dragPointerY)
+                                    }
+                                },
+                                onDragEnd = { finishLineReorder() },
+                                onDragCancel = {
+                                    draggingLineIndex = null
+                                    lineDropIndex = null
+                                    linePositions.clear()
+                                }
+                            )
+                        }
+                    }
+                    if (lineDropIndex == currentScene.lines.size) {
+                        item(key = "line-drop-end") {
+                            LineDropIndicator()
+                        }
                     }
                 }
 
@@ -2132,6 +2216,20 @@ private data class VoiceAssignment(
     var enabled: Boolean = true,
     val isInCurrentScene: Boolean = false
 )
+
+@Composable
+private fun LineDropIndicator() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
+            .height(4.dp)
+            .background(
+                color = MaterialTheme.colorScheme.primary,
+                shape = MaterialTheme.shapes.small
+            )
+    )
+}
 
 private val UTTERANCE_ID_PATTERN = Regex("^scene_(\\d+)_line_(\\d+)_playback_\\d+$")
 
