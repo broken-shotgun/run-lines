@@ -117,6 +117,10 @@
     <string name="error_could_not_import_script">Could not import script</string>
     <string name="error_could_not_open_selected_file">Could not open the selected file</string>
     <string name="error_could_not_open_selected_pdf">Could not open the selected PDF</string>
+    <string name="pdf_large_warning_title">Large PDF</string>
+    <string name="pdf_large_warning_message">This PDF is over 20 MB. Run Lines does not perform OCR. PDF import only works when the script has selectable text; screenshots or scanned pages cannot be imported.</string>
+    <string name="pdf_large_warning_import">Import anyway</string>
+    <string name="error_unsupported_script_type">Unsupported file type. Choose a TXT, Fountain, PDF, or Final Draft (FDX) script.</string>
     <string name="default_script_filename" translatable="false">script.txt</string>
 
     <!-- Fallback title shown in playback and used for title-less imported scripts. -->

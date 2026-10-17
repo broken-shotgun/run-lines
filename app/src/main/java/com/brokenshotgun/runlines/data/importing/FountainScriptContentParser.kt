@@ -16,6 +16,7 @@ class FountainScriptContentParser(
                 untitledSceneName
             )
             "pdf" -> PdfParser.parse(content, untitledScriptName, untitledSceneName)
+            "fdx" -> FdxParser.parse(content, untitledScriptName, untitledSceneName)
             else -> throw IllegalArgumentException("Unsupported script file type: $fileName")
         }
         val normalizedName = ScriptNameNormalizer.normalize(script.name)

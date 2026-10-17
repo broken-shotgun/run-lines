@@ -51,7 +51,9 @@ fun AppNavigation(
     onImportScript: (onImportCompleted: () -> Unit) -> Unit,
     appContainer: AppContainer,
     initialScriptId: Long = -1L,
-    initialSceneIndex: Int = 0
+    initialSceneIndex: Int = 0,
+    importedScriptId: Long? = null,
+    onImportedScriptOpened: () -> Unit = {}
 ) {
     val initialRoute: AppRoute = if (initialScriptId >= 0L) {
         AppRoute.ReadScene(initialScriptId, initialSceneIndex.coerceAtLeast(0))
@@ -61,11 +63,16 @@ fun AppNavigation(
     val backStack: NavBackStack<NavKey> = rememberNavBackStack(initialRoute)
     var openingScriptId by remember { mutableStateOf<Long?>(null) }
 
+    LaunchedEffect(importedScriptId) {
+        importedScriptId?.let { openingScriptId = it }
+    }
+
     LaunchedEffect(openingScriptId) {
         val scriptId = openingScriptId ?: return@LaunchedEffect
         withFrameNanos { }
-        if (backStack.lastOrNull() == AppRoute.Home) {
-            backStack.add(AppRoute.ReadScene(scriptId, 0))
+        val destination = AppRoute.ReadScene(scriptId, 0)
+        if (backStack.lastOrNull() != destination) {
+            backStack.add(destination)
         }
     }
 
@@ -106,8 +113,14 @@ fun AppNavigation(
                             if (readerState.script != null) {
                                 withFrameNanos { }
                                 openingScriptId = null
+                                if (importedScriptId == key.scriptId) {
+                                    onImportedScriptOpened()
+                                }
                             } else if (!readerState.isLoading) {
                                 openingScriptId = null
+                                if (importedScriptId == key.scriptId) {
+                                    onImportedScriptOpened()
+                                }
                             }
                         }
                     }
