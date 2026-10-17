@@ -644,11 +644,20 @@ fun ReadSceneScreen(
         val sceneCharacterNames = currentScene.lines
             .map { it.actor.name.uppercase() }
             .toSet()
-        voiceDialogCharacters = (currentScene.lines.map { it.actor } + scriptState.actors)
-            .filter { it != Actor.ACTION }
+        val characters = (currentScene.lines.map { it.actor } + scriptState.actors)
+            .filterNot { it.name.equals(Actor.ACTION_NAME, ignoreCase = true) }
             .distinctBy { it.name.uppercase() }
             .sortedWith(compareByDescending<Actor> { it.name.uppercase() in sceneCharacterNames })
-            .map { actor ->
+        voiceDialogCharacters = listOf(
+            VoiceAssignment(
+                name = Actor.ACTION_NAME,
+                selectedVoice = scriptState.actorVoices[Actor.ACTION_NAME]
+                    ?: scriptState.getVoice(Actor.ACTION_NAME)
+                    ?: DEFAULT_VOICE_NAME,
+                enabled = true,
+                isInCurrentScene = Actor.ACTION_NAME in sceneCharacterNames
+            )
+        ) + characters.map { actor ->
                 val configuredVoice = scriptState.actorVoices[actor.name.uppercase()]
                     ?: scriptState.actorVoices[actor.name]
                     ?: scriptState.getVoice(actor.name)
@@ -1662,8 +1671,31 @@ fun ReadSceneScreen(
                             )
                         )
                     }
-                    val sceneCharacters = voiceDialogCharacters.filter { it.isInCurrentScene }
-                    val scriptCharacters = voiceDialogCharacters.filterNot { it.isInCurrentScene }
+                    val actionAssignment = voiceDialogCharacters.firstOrNull {
+                        it.name.equals(Actor.ACTION_NAME, ignoreCase = true)
+                    }
+                    val sceneCharacters = voiceDialogCharacters.filter {
+                        it.isInCurrentScene && !it.name.equals(Actor.ACTION_NAME, ignoreCase = true)
+                    }
+                    val scriptCharacters = voiceDialogCharacters.filter {
+                        !it.isInCurrentScene && !it.name.equals(Actor.ACTION_NAME, ignoreCase = true)
+                    }
+                    actionAssignment?.let { assignment ->
+                        CharacterVoiceEditorRow(
+                            assignment = assignment,
+                            voiceOptions = voiceOptions,
+                            nameEditable = false,
+                            canRemove = false,
+                            onNameChange = {},
+                            onVoiceChange = { newVoice ->
+                                voiceDialogError = null
+                                voiceDialogCharacters = voiceDialogCharacters.map {
+                                    if (it === assignment) it.copy(selectedVoice = newVoice) else it
+                                }
+                            },
+                            onRemove = {}
+                        )
+                    }
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1684,6 +1716,8 @@ fun ReadSceneScreen(
                                 CharacterVoiceEditorRow(
                                     assignment = assignment,
                                     voiceOptions = voiceOptions,
+                                    nameEditable = true,
+                                    canRemove = true,
                                     onNameChange = { newName ->
                                         voiceDialogCharacters = voiceDialogCharacters.map {
                                             if (it === assignment) it.copy(name = newName.uppercase()) else it
@@ -1715,6 +1749,8 @@ fun ReadSceneScreen(
                                 CharacterVoiceEditorRow(
                                     assignment = assignment,
                                     voiceOptions = voiceOptions,
+                                    nameEditable = true,
+                                    canRemove = true,
                                     onNameChange = { newName ->
                                         voiceDialogCharacters = voiceDialogCharacters.map {
                                             if (it === assignment) it.copy(name = newName.uppercase()) else it
@@ -1889,6 +1925,21 @@ fun ReadSceneScreen(
                             Text(stringResource(R.string.character_lines_all_off))
                         }
                     }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = Actor.ACTION_NAME,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Checkbox(
+                            checked = true,
+                            onCheckedChange = null,
+                            enabled = false,
+                            modifier = Modifier.size(48.dp)
+                        )
+                    }
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1914,7 +1965,8 @@ fun ReadSceneScreen(
                                             updatedMutedNames.add(actor.name.uppercase())
                                         }
                                         saveMutedCharacters(updatedMutedNames)
-                                    }
+                                    },
+                                    modifier = Modifier.size(48.dp)
                                 )
                             }
                         }
@@ -2088,6 +2140,8 @@ private val UTTERANCE_ID_PATTERN = Regex("^scene_(\\d+)_line_(\\d+)_playback_\\d
 private fun CharacterVoiceEditorRow(
     assignment: VoiceAssignment,
     voiceOptions: List<VoiceOption>,
+    nameEditable: Boolean,
+    canRemove: Boolean,
     onNameChange: (String) -> Unit,
     onVoiceChange: (String) -> Unit,
     onRemove: () -> Unit
@@ -2110,6 +2164,7 @@ private fun CharacterVoiceEditorRow(
             onValueChange = { onNameChange(it.uppercase()) },
             label = { Text(stringResource(R.string.common_character)) },
             singleLine = true,
+            readOnly = !nameEditable,
             modifier = Modifier.weight(1f)
         )
         Spacer(modifier = Modifier.width(8.dp))
@@ -2188,12 +2243,13 @@ private fun CharacterVoiceEditorRow(
         Spacer(modifier = Modifier.width(8.dp))
         IconButton(
             onClick = onRemove,
+            enabled = canRemove,
             modifier = Modifier.size(40.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.Delete,
                 contentDescription = stringResource(R.string.voice_remove_character),
-                tint = MaterialTheme.colorScheme.error,
+                tint = if (canRemove) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp)
             )
         }
